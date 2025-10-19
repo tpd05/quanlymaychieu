@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { App as AntdApp } from "antd";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,8 +26,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Suppress Ant Design warnings
+              const originalWarn = console.warn;
+              console.warn = function(...args) {
+                const msg = args[0]?.toString?.() || '';
+                if (msg.includes('antd v5 support React is 16 ~ 18') ||
+                    msg.includes('Static function can not consume context')) {
+                  return;
+                }
+                originalWarn.apply(console, args);
+              };
+            `,
+          }}
+        />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable}`} style={{ background: '#f7f9fb' }}>
+        <AntdRegistry>
+          <AntdApp>
+            {children}
+          </AntdApp>
+        </AntdRegistry>
       </body>
     </html>
   );
