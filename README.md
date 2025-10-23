@@ -40,12 +40,12 @@
 
 ### Điểm nổi bật
 
-- 🤖 **AI Assistant thông minh** - ChatWidget với khả năng tự học từ feedback người dùng
-- 📊 **Dashboard trực quan** - Thống kê real-time cho từng vai trò
-- 🔔 **Quản lý booking** - Đặt lịch, phê duyệt và theo dõi tự động
-- 🔧 **Bảo trì thiết bị** - Lên lịch và quản lý công việc kỹ thuật
-- 📈 **Thống kê chi tiết** - Biểu đồ sử dụng thiết bị, đánh giá và báo cáo
-- 🎨 **Giao diện hiện đại** - Responsive, thân thiện với người dùng
+-  **AI Assistant thông minh** - ChatWidget với khả năng tự học từ feedback người dùng
+-  **Dashboard trực quan** - Thống kê real-time cho từng vai trò
+-  **Quản lý booking** - Đặt lịch, phê duyệt và theo dõi tự động
+-  **Bảo trì thiết bị** - Lên lịch và quản lý công việc kỹ thuật
+-  **Thống kê chi tiết** - Biểu đồ sử dụng thiết bị, đánh giá và báo cáo
+-  **Giao diện hiện đại** - Responsive, thân thiện với người dùng
 
 ---
 
@@ -128,7 +128,7 @@
 
 ---
 
-## 💻 Yêu cầu hệ thống
+## Yêu cầu hệ thống
 
 ### Bắt buộc
 - **Node.js** >= 18.0.0
