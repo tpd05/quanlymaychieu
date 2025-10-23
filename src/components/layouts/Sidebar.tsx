@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Avatar, Spin, App } from 'antd';
-import { HomeOutlined, LaptopOutlined, UserOutlined, BarChartOutlined, BugOutlined, SettingOutlined, QuestionCircleOutlined, LogoutOutlined, ExclamationCircleOutlined, MessageOutlined, BulbOutlined, HistoryOutlined } from '@ant-design/icons';
+import { HomeOutlined, LaptopOutlined, UserOutlined, BarChartOutlined, BugOutlined, SettingOutlined, QuestionCircleOutlined, LogoutOutlined, ExclamationCircleOutlined, MessageOutlined, BulbOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import styles from './Sidebar.module.css';
@@ -117,7 +117,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const router = useRouter();
   const { modal } = App.useApp();
   const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<{ role: string; fullName?: string; name?: string; email?: string; avatar?: string } | null>(null);
 
   // Fetch user info from API
   useEffect(() => {
@@ -180,17 +180,17 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   // Find selected key based on current pathname
   const findSelectedKey = (): string[] => {
     // Exact match first
-    const exactMatch = menuItems.find((m: any) => m.key === pathname);
+    const exactMatch = menuItems.find((m) => m.key === pathname);
     if (exactMatch && exactMatch.key) return [exactMatch.key];
     
     // Check in children groups
     for (const item of menuItems) {
       if ('children' in item && item.children) {
-        const childMatch = item.children.find((c: any) => c.key === pathname);
+        const childMatch = item.children.find((c) => c.key === pathname);
         if (childMatch && childMatch.key) return [childMatch.key];
         
         // Partial match for nested routes
-        const partialMatch = item.children.find((c: any) => c.key && pathname.startsWith(c.key));
+        const partialMatch = item.children.find((c) => c.key && pathname.startsWith(c.key));
         if (partialMatch && partialMatch.key) return [partialMatch.key];
       }
     }
