@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     // Real-time learning: Update Python backend with feedback score
     try {
-      const baseUrl = process.env.PY_CHATBOT_URL || 'http://127.0.0.1:8001';
+      const baseUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || process.env.PY_CHATBOT_URL || 'http://127.0.0.1:8001';
       
       // Extract docIds from sources
       if (sources && Array.isArray(sources)) {

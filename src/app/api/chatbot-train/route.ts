@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const content = await fs.readFile(filePath, 'utf-8');
     const items: KnowledgeItem[] = JSON.parse(content);
 
-    const baseUrl = process.env.PY_CHATBOT_URL || 'http://127.0.0.1:8001';
+    const baseUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || process.env.PY_CHATBOT_URL || 'http://127.0.0.1:8001';
 
     let totalChunks = 0;
     for (const item of items) {
