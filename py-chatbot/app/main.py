@@ -101,8 +101,10 @@ class SearchOut(BaseModel):
 # ------------------------
 # Global State: Embedding + FAISS
 # ------------------------
-EMBED_MODEL_NAME = os.getenv("EMBED_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-QA_MODEL_NAME = os.getenv("QA_MODEL_NAME", "deepset/xlm-roberta-base-squad2")
+# Use smaller model to fit in 512MB RAM limit
+EMBED_MODEL_NAME = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+# Disable QA model by default to save memory (can enable via env var)
+QA_MODEL_NAME = os.getenv("QA_MODEL_NAME", "")  # Empty = disabled
 QA_TOP_CONTEXTS = int(os.getenv("QA_TOP_CONTEXTS", "3"))
 AUTOSAVE_SECONDS = int(os.getenv("AUTOSAVE_SECONDS", "300"))  # 0 to disable
 
@@ -167,18 +169,19 @@ store_keywords: List[List[str]] = []  # Keywords for each document chunk
 # Feedback-based learning: track document performance
 document_feedback_scores: Dict[str, float] = {}  # docId -> average boost score
 
-# QA pipeline (extractive)
+# QA pipeline (extractive) - Load only if model name is provided
 qa_tokenizer = None
 qa_model = None
-try:
-    _qa_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    qa_tokenizer = AutoTokenizer.from_pretrained(QA_MODEL_NAME)
-    qa_model = AutoModelForQuestionAnswering.from_pretrained(QA_MODEL_NAME)
-    qa_model.to(_qa_device)
-    qa_model.eval()
-except Exception:
-    qa_tokenizer = None
-    qa_model = None
+if QA_MODEL_NAME:  # Only load if explicitly configured
+    try:
+        _qa_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        qa_tokenizer = AutoTokenizer.from_pretrained(QA_MODEL_NAME)
+        qa_model = AutoModelForQuestionAnswering.from_pretrained(QA_MODEL_NAME)
+        qa_model.to(_qa_device)
+        qa_model.eval()
+    except Exception:
+        qa_tokenizer = None
+        qa_model = None
 
 # Persistence configuration
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

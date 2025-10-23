@@ -78,7 +78,10 @@ Click **Advanced** → **Add Environment Variable**:
 |----------|-------|
 | `CHATBOT_DATA_DIR` | `/opt/render/project/src/store` |
 | `FRONTEND_URL` | `https://qlmc.vercel.app` |
+| `EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` |
 | `AUTOSAVE_SECONDS` | `300` |
+
+⚠️ **Lưu ý**: Không thêm `QA_MODEL_NAME` để tiết kiệm RAM cho Free tier.
 
 **2.5. Deploy:**
 1. Click **Create Web Service**
@@ -185,6 +188,12 @@ Dùng dịch vụ như cron-job.org:
 ### ❌ CORS Error
 → Kiểm tra `FRONTEND_URL` trong Render Environment Variables
 → Phải đúng domain Vercel (không có trailing slash)
+
+### ❌ Out of Memory Error
+→ Free tier chỉ có 512MB RAM
+→ Code đã tối ưu dùng model nhỏ (`all-MiniLM-L6-v2`)
+→ Không set `QA_MODEL_NAME` (để trống)
+→ Nếu vẫn OOM: Upgrade Starter ($7/tháng) hoặc dùng Railway
 
 ### ❌ Service Sleeping
 → Đây là tính năng Free tier

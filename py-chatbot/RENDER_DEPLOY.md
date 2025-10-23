@@ -81,14 +81,18 @@ Click **Advanced** → **Add Environment Variable**:
 
 | Variable | Value | Bắt buộc |
 |----------|-------|----------|
-| `EMBED_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | ❌ (Mặc định) |
-| `QA_MODEL_NAME` | `deepset/xlm-roberta-base-squad2` | ❌ (Mặc định) |
 | `CHATBOT_DATA_DIR` | `/opt/render/project/src/store` | ✅ (Path lưu FAISS) |
 | `FRONTEND_URL` | `https://qlmc.vercel.app` | ✅ (CORS) |
+| `EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | ❌ (Mặc định - nhỏ gọn cho 512MB RAM) |
+| `QA_MODEL_NAME` | _(để trống)_ | ❌ (Tắt QA model để tiết kiệm RAM) |
 | `AUTOSAVE_SECONDS` | `300` | ❌ (Auto-save index) |
 | `QA_TOP_CONTEXTS` | `3` | ❌ (Number of contexts) |
 
-⚠️ **Quan trọng**: 
+⚠️ **Quan trọng - Memory Optimization**: 
+- **Free tier chỉ có 512MB RAM** - Không đủ để load cả 2 models lớn
+- `EMBED_MODEL`: Dùng `all-MiniLM-L6-v2` (nhỏ ~80MB) thay vì model đa ngôn ngữ (~400MB)
+- `QA_MODEL_NAME`: **Để trống** để tắt QA model (tiết kiệm ~300MB RAM)
+- Backend vẫn hoạt động tốt với chỉ embedding model (RAG vẫn trả lời được)
 - `CHATBOT_DATA_DIR`: Render dùng `/opt/render/project/src` là working directory
 - `FRONTEND_URL`: URL của Next.js frontend trên Vercel (thêm sau khi deploy frontend)
 
@@ -240,6 +244,12 @@ python-3.11.10
 - Thêm `torch==2.4.1` và `numpy==1.26.4` để đảm bảo version compatibility
 - Dùng `faiss-cpu` thay vì `faiss-gpu` (Render Free không có GPU)
 
+### 5. Memory Optimization in `main.py`
+- **Mặc định dùng model nhỏ**: `all-MiniLM-L6-v2` (80MB) thay vì model đa ngôn ngữ (400MB)
+- **Tắt QA model mặc định**: Chỉ load khi có `QA_MODEL_NAME` environment variable
+- **Lý do**: Free tier chỉ có 512MB RAM, không đủ load 2 models lớn
+- Backend vẫn hoạt động tốt với chỉ embedding model (retrieval-based RAG)
+
 ### 5. Updated CORS in `main.py`
 ```python
 allow_origins=[
@@ -288,6 +298,27 @@ allow_origins=[
 1. Vào Render → **Environment** → Thêm/sửa `FRONTEND_URL`
 2. Giá trị: `https://qlmc.vercel.app` (không có trailing slash)
 3. Click **Manual Deploy** → **Deploy latest commit**
+
+### ❌ Error: "Out of memory (used over 512Mi)"
+
+**Nguyên nhân**: ML models quá lớn cho Free tier 512MB RAM
+
+**Giải pháp** (đã áp dụng trong code):
+1. **Dùng model nhỏ hơn**:
+   - Thay `paraphrase-multilingual-MiniLM-L12-v2` (400MB) 
+   - Bằng `all-MiniLM-L6-v2` (80MB)
+   - Trong Environment Variables: `EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2`
+
+2. **Tắt QA model**:
+   - Để trống `QA_MODEL_NAME` trong Environment Variables
+   - Backend vẫn trả lời câu hỏi bằng retrieval-only (không cần extractive QA)
+   - Tiết kiệm ~300MB RAM
+
+3. **Nếu vẫn OOM**:
+   - Upgrade lên **Starter plan ($7/tháng)** để có 512MB-2GB RAM
+   - Hoặc dùng Railway (có Free tier 1GB RAM)
+
+**Sau khi fix**: Push code và Render sẽ tự động redeploy.
 
 ### ❌ Warning: "Service sleeping after 15 minutes"
 
@@ -347,15 +378,17 @@ https://qlmc-python-backend.onrender.com/docs
 **Render Free Tier**:
 - ✅ **0đ/tháng** (miễn phí mãi mãi)
 - ⚠️ Giới hạn:
-  - 512MB RAM
+  - **512MB RAM** (chỉ đủ cho 1 embedding model nhỏ)
   - Service sleep sau 15 phút không dùng
   - 750 hours/tháng (đủ dùng cho 1 service)
+- ✅ **Đã tối ưu**: Code dùng model nhỏ để fit trong 512MB
 
 **Render Starter ($7/tháng)**:
-- 512MB RAM
+- **512MB-2GB RAM** (có thể chọn)
 - **KHÔNG sleep**
 - Unlimited hours
 - Custom domain
+- Load được cả 2 models lớn (embedding + QA)
 
 ---
 
