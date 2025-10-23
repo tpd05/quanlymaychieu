@@ -1,27 +1,57 @@
 import os
+import json
+import asyncio
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 import torch
+import numpy as np
+import faiss  # type: ignore
+from transformers import AutoTokenizer, AutoModel, AutoModelForQuestionAnswering
 
-def device_str() -> str:
+
+def torch_device_name() -> str:
     if torch.cuda.is_available():
         return f"cuda:{torch.cuda.current_device()}"
     return "cpu"
 
-app = FastAPI(title="QLMC Chatbot Service", version="0.1.0")
+
+def st_device_name() -> str:
+    # SentenceTransformers accepts 'cuda' or 'cpu'
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+app = FastAPI(title="QLMC Chatbot Service", version="0.4.1")
+
+# CORS Configuration - Allow Next.js frontend to call API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://192.168.1.88:3000",
+        "http://192.168.1.100:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ------------------------
+# Models and Schemas
+# ------------------------
 class ParseIn(BaseModel):
     text: str
-    user: Optional[Dict] = None
+    user: Optional[Dict[str, Any]] = None
 
 
 class ParseOut(BaseModel):
     intent: str
     confidence: float
-    entities: Dict
+    entities: Dict[str, Any]
 
 
 class RagIn(BaseModel):
@@ -31,9 +61,277 @@ class RagIn(BaseModel):
 
 class RagOut(BaseModel):
     answer: str
-    sources: List[Dict]
+    sources: List[Dict[str, Any]]
     passages: List[str]
     confidence: float
+
+
+class EmbedIn(BaseModel):
+    docId: str
+    chunks: List[str]
+    rolesAllowed: Optional[List[str]] = None
+    title: Optional[str] = None
+    intent: Optional[str] = None
+    keywords: Optional[List[str]] = None
+
+
+class EmbedOut(BaseModel):
+    added: int
+    total_index: int
+
+
+class SearchIn(BaseModel):
+    query: str
+    top_k: int = 5
+    role: Optional[str] = None
+
+
+class SearchHit(BaseModel):
+    docId: str
+    text: str
+    score: float
+
+
+class SearchOut(BaseModel):
+    hits: List[SearchHit]
+
+
+# ------------------------
+# Global State: Embedding + FAISS
+# ------------------------
+EMBED_MODEL_NAME = os.getenv("EMBED_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+QA_MODEL_NAME = os.getenv("QA_MODEL_NAME", "deepset/xlm-roberta-base-squad2")
+QA_TOP_CONTEXTS = int(os.getenv("QA_TOP_CONTEXTS", "3"))
+AUTOSAVE_SECONDS = int(os.getenv("AUTOSAVE_SECONDS", "300"))  # 0 to disable
+
+_st_device = st_device_name()
+
+
+class HFEmbedder:
+    def __init__(self, model_name: str, device: str = "cpu") -> None:
+        self.device = device
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
+        self.model.to(device)
+        self.model.eval()
+
+    def get_sentence_embedding_dimension(self) -> int:
+        return int(getattr(self.model.config, "hidden_size", 768))
+
+    def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+        if not texts:
+            dim = self.get_sentence_embedding_dimension()
+            return np.zeros((0, dim), dtype=np.float32)
+        outs: List[np.ndarray] = []
+        with torch.no_grad():
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                inputs = self.tokenizer(
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt",
+                )
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                outputs = self.model(**inputs)
+                last_hidden = outputs.last_hidden_state  # (bs, seq, hid)
+                attn = inputs["attention_mask"].unsqueeze(-1).type_as(last_hidden)
+                masked = last_hidden * attn
+                sum_emb = masked.sum(dim=1)
+                lengths = attn.sum(dim=1).clamp(min=1)
+                mean_pooled = sum_emb / lengths
+                emb = mean_pooled.detach().cpu().numpy().astype(np.float32)
+                # Normalize per vector for cosine via inner product
+                faiss.normalize_L2(emb)
+                outs.append(emb)
+        return np.vstack(outs) if outs else np.zeros((0, self.get_sentence_embedding_dimension()), dtype=np.float32)
+
+
+embedder = HFEmbedder(EMBED_MODEL_NAME, device=_st_device)
+EMB_DIM = embedder.get_sentence_embedding_dimension()
+
+# Cosine similarity via inner product requires normalized vectors
+faiss_index = faiss.IndexFlatIP(EMB_DIM)
+
+# Store mapping from FAISS ids to metadata
+store_doc_ids: List[str] = []
+store_texts: List[str] = []
+store_roles: List[List[str]] = []
+store_titles: List[str] = []  # Document titles
+store_intents: List[str] = []  # Intent categories
+store_keywords: List[List[str]] = []  # Keywords for each document chunk
+
+# Feedback-based learning: track document performance
+document_feedback_scores: Dict[str, float] = {}  # docId -> average boost score
+
+# QA pipeline (extractive)
+qa_tokenizer = None
+qa_model = None
+try:
+    _qa_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    qa_tokenizer = AutoTokenizer.from_pretrained(QA_MODEL_NAME)
+    qa_model = AutoModelForQuestionAnswering.from_pretrained(QA_MODEL_NAME)
+    qa_model.to(_qa_device)
+    qa_model.eval()
+except Exception:
+    qa_tokenizer = None
+    qa_model = None
+
+# Persistence configuration
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.getenv("CHATBOT_DATA_DIR", os.path.join(BASE_DIR, "store"))
+INDEX_PATH = os.path.join(DATA_DIR, "faiss.index")
+META_PATH = os.path.join(DATA_DIR, "meta.json")
+
+
+def _normalize(x: np.ndarray) -> np.ndarray:
+    # x: (n, d)
+    faiss.normalize_L2(x)
+    return x
+
+
+def _ensure_data_dir() -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def _save_metadata() -> None:
+    _ensure_data_dir()
+    with open(META_PATH, "w", encoding="utf-8") as f:
+        json.dump({
+            "doc_ids": store_doc_ids,
+            "texts": store_texts,
+            "roles": store_roles,
+            "titles": store_titles,
+            "intents": store_intents,
+            "keywords": store_keywords
+        }, f, ensure_ascii=False)
+
+
+def _load_metadata() -> bool:
+    if not os.path.exists(META_PATH):
+        return False
+    try:
+        with open(META_PATH, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        # mutate lists in-place to avoid rebinding where possible
+        store_doc_ids.clear()
+        store_doc_ids.extend(meta.get("doc_ids", []))
+        store_texts.clear()
+        store_texts.extend(meta.get("texts", []))
+        
+        # roles may be missing from older metadata; default to all roles
+        roles = meta.get("roles", None)
+        default_roles = ["teacher", "technician", "admin"]
+        if roles is None:
+            # fill with defaults matching number of texts
+            rl = [default_roles for _ in range(len(store_texts))]
+        else:
+            rl = roles
+        store_roles.clear()
+        store_roles.extend(rl)
+        
+        # Load new metadata fields with backward compatibility
+        store_titles.clear()
+        store_titles.extend(meta.get("titles", [""] * len(store_texts)))
+        store_intents.clear()
+        store_intents.extend(meta.get("intents", [""] * len(store_texts)))
+        store_keywords.clear()
+        store_keywords.extend(meta.get("keywords", [[] for _ in range(len(store_texts))]))
+        
+        return True
+    except Exception:
+        return False
+
+
+def _save_faiss() -> None:
+    _ensure_data_dir()
+    faiss.write_index(faiss_index, INDEX_PATH)
+
+
+def _load_faiss() -> bool:
+    global faiss_index
+    if not os.path.exists(INDEX_PATH):
+        return False
+    try:
+        idx = faiss.read_index(INDEX_PATH)
+        # Validate index dimension matches embedding dimension; if not, we'll rebuild later.
+        if idx.d != EMB_DIM:
+            return False
+        faiss_index = idx
+        return True
+    except Exception:
+        return False
+
+
+def _rebuild_faiss_from_texts(batch_size: int = 256) -> None:
+    global faiss_index
+    # Create a new index and re-embed all texts
+    new_index = faiss.IndexFlatIP(EMB_DIM)
+    if not store_texts:
+        faiss_index = new_index
+        return
+    # Encode in batches to avoid high memory usage
+    all_embs: List[np.ndarray] = []
+    for i in range(0, len(store_texts), batch_size):
+        batch = store_texts[i : i + batch_size]
+        embs = embedder.encode(batch)  # Already returns normalized numpy array
+        if embs.dtype != np.float32:
+            embs = embs.astype(np.float32)
+        all_embs.append(embs)
+    stacked = np.vstack(all_embs) if all_embs else np.zeros((0, EMB_DIM), dtype=np.float32)
+    if stacked.shape[0] > 0:
+        new_index.add(stacked)
+    faiss_index = new_index
+
+
+def save_index_and_meta() -> Dict[str, Any]:
+    _save_metadata()
+    _save_faiss()
+    return {
+        "ok": True,
+        "index_size": len(store_texts),
+        "paths": {"index": INDEX_PATH, "meta": META_PATH},
+    }
+
+
+def load_index_and_meta() -> Dict[str, Any]:
+    meta_loaded = _load_metadata()
+    index_loaded = _load_faiss()
+    rebuilt = False
+    if meta_loaded and (not index_loaded or faiss_index.d != EMB_DIM or faiss_index.ntotal != len(store_texts)):
+        # Try to rebuild index from texts
+        _rebuild_faiss_from_texts()
+        # Save rebuilt index for next time
+        _save_faiss()
+        rebuilt = True
+    # If metadata didn't load, don't keep any loaded FAISS index to avoid inconsistent state
+    if not meta_loaded:
+        _rebuild_faiss_from_texts()  # resets to empty if no texts
+        index_loaded = False
+    return {
+        "ok": meta_loaded or index_loaded,
+        "meta_loaded": meta_loaded,
+        "index_loaded": index_loaded,
+        "rebuilt": rebuilt,
+        "index_size": len(store_texts),
+        "emb_dim": EMB_DIM,
+        "paths": {"index": INDEX_PATH, "meta": META_PATH},
+    }
+
+
+# Concurrency primitives
+index_lock = asyncio.Lock()
+
+
+async def async_save_index_and_meta() -> Dict[str, Any]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, save_index_and_meta)
+
+
+async def async_load_index_and_meta() -> Dict[str, Any]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, load_index_and_meta)
 
 
 @app.get("/health")
@@ -42,7 +340,14 @@ async def health():
         "status": "ok",
         "torch_version": torch.__version__,
         "cuda_available": torch.cuda.is_available(),
-        "device": device_str(),
+        "device": torch_device_name(),
+        "st_device": _st_device,
+        "embed_model": EMBED_MODEL_NAME,
+        "qa_model": QA_MODEL_NAME,
+        "index_size": len(store_texts),
+        "emb_dim": EMB_DIM,
+        "data_dir": DATA_DIR,
+        "autosave_seconds": AUTOSAVE_SECONDS,
     }
 
 
@@ -50,16 +355,280 @@ async def health():
 async def parse(inp: ParseIn):
     # TODO: replace with intent classifier + NER
     intent = "faq_general"
-    entities: Dict = {}
+    entities: Dict[str, Any] = {}
     return ParseOut(intent=intent, confidence=0.6, entities=entities)
 
 
+@app.post("/embed", response_model=EmbedOut)
+async def embed(inp: EmbedIn):
+    if not inp.chunks:
+        return EmbedOut(added=0, total_index=len(store_texts))
+    # Encode in batches; for simplicity encode all
+    embs = embedder.encode(inp.chunks)
+    if embs.dtype != np.float32:
+        embs = embs.astype(np.float32)
+    async with index_lock:
+        faiss_index.add(embs)
+        # Track metadata
+        store_doc_ids.extend([inp.docId] * len(inp.chunks))
+        store_texts.extend(inp.chunks)
+        roles = inp.rolesAllowed or ["teacher", "technician", "admin"]
+        store_roles.extend([roles] * len(inp.chunks))
+        # Store new metadata fields
+        store_titles.extend([inp.title or ""] * len(inp.chunks))
+        store_intents.extend([inp.intent or ""] * len(inp.chunks))
+        store_keywords.extend([inp.keywords or []] * len(inp.chunks))
+        total = len(store_texts)
+    return EmbedOut(added=len(inp.chunks), total_index=total)
+
+
+@app.post("/search", response_model=SearchOut)
+async def search(inp: SearchIn):
+    if faiss_index.ntotal == 0:
+        return SearchOut(hits=[])
+    q = embedder.encode([inp.query]).astype(np.float32)
+    over_k = min(max(inp.top_k * 5, inp.top_k), faiss_index.ntotal)
+    D, I = faiss_index.search(q, over_k)
+    
+    # Normalize query for keyword matching
+    query_lower = inp.query.lower()
+    query_words = set(query_lower.split())
+    
+    hits_with_boost: List[tuple[int, float]] = []
+    for idx, score in zip(I[0], D[0]):
+        if idx == -1:
+            continue
+        # Role-based filter
+        if inp.role:
+            roles = store_roles[idx] if idx < len(store_roles) else ["teacher", "technician", "admin"]
+            if inp.role not in roles:
+                continue
+        
+        # Keyword boosting: check if query words match keywords
+        boosted_score = float(score)
+        if idx < len(store_keywords) and store_keywords[idx]:
+            keywords = [kw.lower() for kw in store_keywords[idx]]
+            # Count matching keywords
+            matches = sum(1 for kw in keywords if any(kw in word or word in kw for word in query_words))
+            # Boost score by 0.1 per matching keyword (max +0.5)
+            boost = min(matches * 0.1, 0.5)
+            boosted_score += boost
+        
+        # Feedback-based boosting: use learned feedback scores
+        doc_id = store_doc_ids[idx]
+        if doc_id in document_feedback_scores:
+            feedback_boost = document_feedback_scores[doc_id] * 0.2  # Scale feedback impact
+            boosted_score += feedback_boost
+        
+        hits_with_boost.append((idx, boosted_score))
+    
+    # Sort by boosted score (descending)
+    hits_with_boost.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top_k results
+    hits: List[SearchHit] = []
+    for idx, score in hits_with_boost[:inp.top_k]:
+        hits.append(SearchHit(docId=store_doc_ids[idx], text=store_texts[idx], score=score))
+    
+    return SearchOut(hits=hits)
+
+
 @app.post("/rag/answer", response_model=RagOut)
-async def rag_answer(inp: RagIn):
-    # TODO: FAISS retrieval + extractive QA
-    return RagOut(
-        answer="Đây là trả lời mẫu từ dịch vụ chatbot.",
-        sources=[{"docId": "doc_1", "title": "Quy định sử dụng", "snippet": "..."}],
-        passages=["..."],
-        confidence=0.7,
-    )
+async def rag_answer(inp: RagIn, role: Optional[str] = None):
+    # Normalize question for consistency (lowercase, strip whitespace)
+    normalized_question = inp.question.strip()
+    
+    # Retrieve
+    hits = await search(SearchIn(query=normalized_question, top_k=inp.top_k, role=role))
+    if not hits.hits:
+        return RagOut(
+            answer="Hiện chưa có tài liệu phù hợp để trả lời câu hỏi này.",
+            sources=[],
+            passages=[],
+            confidence=0.2,
+        )
+
+    passages = [h.text for h in hits.hits]
+    top = hits.hits[0]
+
+    best_answer = top.text
+    best_score = float(top.score)
+    used_doc = top.docId
+    used_snippet = top.text[:120]
+
+    # If top passage is short enough (< 500 chars), use it directly for consistency
+    # This avoids extractive QA variability for short documents
+    if len(top.text) <= 500:
+        sources = [{"docId": used_doc, "title": used_doc, "snippet": used_snippet}]
+        confidence = min(0.99, max(0.5, best_score))
+        return RagOut(answer=best_answer, sources=sources, passages=passages, confidence=confidence)
+
+    # Try extractive QA on top-k contexts for longer documents
+    if qa_model is not None and qa_tokenizer is not None and passages:
+        try:
+            import torch.nn.functional as F
+
+            def answer_span(question: str, context: str) -> Dict[str, Any]:
+                inputs = qa_tokenizer(
+                    question,
+                    context,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=384,
+                    stride=64,
+                    padding=True,
+                )
+                inputs = {k: v.to(_qa_device) for k, v in inputs.items()}
+                with torch.no_grad():
+                    outputs = qa_model(**inputs)
+                    start_logits = outputs.start_logits[0]
+                    end_logits = outputs.end_logits[0]
+                    # Compute probabilities
+                    start_probs = F.softmax(start_logits, dim=-1)
+                    end_probs = F.softmax(end_logits, dim=-1)
+                    max_answer_len = 30
+                    best_s = 0
+                    best_e = 0
+                    best_score_local = -1e9
+                    L = start_logits.size(0)
+                    for s in range(L):
+                        e_max = min(L - 1, s + max_answer_len)
+                        # choose best end within window
+                        e_candidates = end_logits[s:e_max + 1]
+                        e_rel = int(torch.argmax(e_candidates))
+                        e = s + e_rel
+                        score = float(start_logits[s] + end_logits[e])
+                        if e >= s and score > best_score_local:
+                            best_score_local = score
+                            best_s, best_e = s, e
+                    answer_ids = inputs["input_ids"][0][best_s : best_e + 1]
+                    answer_text = qa_tokenizer.decode(answer_ids, skip_special_tokens=True)
+                    # approximate confidence via product of probs
+                    conf = float(start_probs[best_s] * end_probs[best_e])
+                    return {"answer": answer_text.strip(), "score": conf}
+
+            k = max(1, min(QA_TOP_CONTEXTS, len(passages)))
+            for i in range(k):
+                ctx = passages[i]
+                res = answer_span(normalized_question, ctx)
+                score = float(res.get("score", 0.0))
+                ans = str(res.get("answer", "")).strip()
+                if ans and score > best_score:
+                    best_score = score
+                    best_answer = ans
+                    used_doc = hits.hits[i].docId
+                    used_snippet = ctx[:120]
+        except Exception:
+            # Fallback to retrieval-only answer if QA fails
+            pass
+
+    sources = [{"docId": used_doc, "title": used_doc, "snippet": used_snippet}]
+    confidence = min(0.99, max(0.3, best_score))
+    return RagOut(answer=best_answer, sources=sources, passages=passages, confidence=confidence)
+
+
+# ------------------------
+# Persistence Endpoints + Startup
+# ------------------------
+
+@app.post("/index/save")
+async def index_save():
+    async with index_lock:
+        res = await async_save_index_and_meta()
+        return res
+
+
+@app.post("/index/load")
+async def index_load():
+    async with index_lock:
+        res = await async_load_index_and_meta()
+        return res
+
+
+@app.get("/index/stats")
+async def index_stats():
+    return {
+        "index_size": len(store_texts),
+        "emb_dim": EMB_DIM,
+        "files": {
+            "index_exists": os.path.exists(INDEX_PATH),
+            "meta_exists": os.path.exists(META_PATH),
+        },
+        "paths": {"index": INDEX_PATH, "meta": META_PATH},
+    }
+
+
+# ------------------------
+# Feedback Learning Endpoint
+# ------------------------
+class FeedbackUpdateIn(BaseModel):
+    docId: str
+    feedbackScore: float  # Positive for like, negative for dislike
+
+
+@app.post("/feedback/update")
+async def update_feedback_score(inp: FeedbackUpdateIn):
+    """
+    Update document feedback score based on user feedback.
+    Positive score for likes, negative for dislikes.
+    This affects future search ranking.
+    """
+    if inp.docId not in document_feedback_scores:
+        document_feedback_scores[inp.docId] = 0.0
+    
+    # Exponential moving average: new = 0.7 * old + 0.3 * new_feedback
+    old_score = document_feedback_scores[inp.docId]
+    document_feedback_scores[inp.docId] = 0.7 * old_score + 0.3 * inp.feedbackScore
+    
+    return {
+        "ok": True,
+        "docId": inp.docId,
+        "newScore": document_feedback_scores[inp.docId],
+    }
+
+
+@app.get("/feedback/scores")
+async def get_feedback_scores():
+    """Get all document feedback scores"""
+    return {
+        "scores": document_feedback_scores,
+        "count": len(document_feedback_scores),
+    }
+
+
+_autosave_task: Optional[asyncio.Task] = None
+
+
+async def _autosave_loop():
+    while True:
+        try:
+            await asyncio.sleep(max(5, AUTOSAVE_SECONDS))
+            async with index_lock:
+                await async_save_index_and_meta()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            # Continue loop on errors
+            continue
+
+
+@app.on_event("startup")
+async def _startup_load_index():
+    # Attempt to load existing index and metadata on startup.
+    await async_load_index_and_meta()
+    # Start autosave loop if enabled
+    global _autosave_task
+    if AUTOSAVE_SECONDS > 0:
+        _autosave_task = asyncio.create_task(_autosave_loop())
+
+
+@app.on_event("shutdown")
+async def _shutdown_cleanup():
+    # Stop autosave task
+    global _autosave_task
+    if _autosave_task is not None:
+        _autosave_task.cancel()
+        try:
+            await _autosave_task
+        except Exception:
+            pass

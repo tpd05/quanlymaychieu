@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Layout, ConfigProvider } from 'antd';
+import { Layout, ConfigProvider, App } from 'antd';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import styles from './DashboardLayout.module.css';
@@ -31,7 +31,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
       }}
     >
-      <Layout className={styles.layout}>
+      <App>
+        <Layout className={styles.layout}>
         <Sidebar collapsed={collapsed} onCollapse={setCollapsed} />
         <Layout>
           <Header
@@ -49,6 +50,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Footer>
         </Layout>
       </Layout>
+      </App>
     </ConfigProvider>
   );
 }

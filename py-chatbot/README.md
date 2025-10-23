@@ -47,10 +47,36 @@ PY_CHATBOT_URL=http://127.0.0.1:8001
 - Implement extractive QA model for Vietnamese
 - Secure endpoints and rate-limit
 
+## Persistence (FAISS index + metadata)
+ - Automatic periodic save is enabled via `AUTOSAVE_SECONDS` (default 300 seconds). Set `AUTOSAVE_SECONDS=0` to disable.
+
+Endpoints:
+
+The service also attempts to auto-load the index on startup.
+
+Quick test (PowerShell):
+```powershell
+# After adding some chunks via /embed
+curl -Method POST http://127.0.0.1:8001/index/save
+
+# Restart the service, then
+curl -Method POST http://127.0.0.1:8001/index/load
+curl http://127.0.0.1:8001/index/stats
+```
+
+## Extractive QA (Vietnamese-friendly)
+- The service uses a multilingual QA model by default: `deepset/xlm-roberta-base-squad2`.
+- Configure via environment variable `QA_MODEL_NAME`.
+- Control how many retrieved passages are sent to QA with `QA_TOP_CONTEXTS` (default 3).
+
+Example environment variables (PowerShell):
+```powershell
+
 ## Troubleshooting
 - 'py' not found: Use `python` instead of `py` on Windows.
 - Python 3.13 wheels for PyTorch may not be available yet. If install fails:
 	- Option A (recommended): Use Conda
+```
 		```powershell
 		conda create -n qlmc-chatbot python=3.10 -y; conda activate qlmc-chatbot
 		pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121

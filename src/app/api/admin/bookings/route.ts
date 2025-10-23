@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     // Get query params for filtering
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam) : undefined;
 
     // Build where clause
     const where: any = {};
@@ -56,6 +58,7 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: 'desc',
       },
+      ...(limit && { take: limit }),
     });
 
     return NextResponse.json({

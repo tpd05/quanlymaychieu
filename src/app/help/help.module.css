@@ -1,53 +1,8 @@
-.container {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .loadingContainer {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 400px;
-}
-
-/* Header */
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 32px;
-  margin-bottom: 24px;
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.headerContent {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.headerIcon {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.header h1 {
-  color: white;
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.header p {
-  color: rgba(255, 255, 255, 0.95);
-  margin: 0;
-  font-size: 16px;
-}
-
-.header strong {
-  color: white;
-  font-weight: 600;
 }
 
 /* Overview Card */

@@ -12,6 +12,7 @@ import {
   CheckCircleOutlined,
   InfoCircleOutlined,
   WarningOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import styles from './help.module.css';
 
@@ -165,12 +166,57 @@ export default function HelpPage() {
           },
         ],
       },
+      {
+        key: 'ai-learning',
+        icon: <RocketOutlined />,
+        title: 'AI Tự Học',
+        steps: [
+          {
+            title: 'Xem lịch sử học tập',
+            description: 'Vào "AI Tự Học" → Xem timeline các lần AI học từ feedback của người dùng. Mỗi ngày 00:00, hệ thống tự động phân tích feedback 24h qua',
+          },
+          {
+            title: 'Thống kê tổng quan',
+            description: 'Xem 6 metrics: Tổng số lần học, Tổng feedback đã xử lý, Trung bình feedback/ngày, Tổng Like, Tổng Dislike, Trung bình docs cập nhật/ngày',
+          },
+          {
+            title: 'Chi tiết mỗi lần học',
+            description: 'Mỗi log hiển thị: Số feedback, Like/Dislike count, Documents updated, Top câu hỏi phổ biến với điểm trung bình, Các cải thiện đã thực hiện',
+          },
+          {
+            title: 'Hiểu điểm số',
+            description: 'Mỗi Like = +1.0 điểm, Dislike = -0.5 điểm. Documents có điểm cao sẽ được ưu tiên hiển thị khi AI trả lời',
+          },
+        ],
+      },
+      {
+        key: 'ai-feedback',
+        icon: <MessageOutlined />,
+        title: 'Thống kê Feedback AI',
+        steps: [
+          {
+            title: 'Xem tổng quan feedback',
+            description: 'Vào "Thống kê Feedback" → Xem tổng số feedback, tỷ lệ hài lòng, và biểu đồ phân bố Like/Dislike theo thời gian',
+          },
+          {
+            title: 'Phân tích câu hỏi',
+            description: 'Xem tab "Tất cả phản hồi" để thấy câu hỏi nào được đánh giá tốt (Like) và câu nào cần cải thiện (Dislike)',
+          },
+          {
+            title: 'Cải thiện chatbot',
+            description: 'Các câu hỏi có nhiều Dislike nên được review và cập nhật knowledge base để AI trả lời tốt hơn',
+          },
+        ],
+      },
     ],
     tips: [
       'Thường xuyên kiểm tra tab "Chờ duyệt" để phê duyệt lịch đặt kịp thời',
       'Ưu tiên xử lý các yêu cầu hỗ trợ có mức độ "Khẩn cấp"',
       'Đảm bảo thông tin thiết bị luôn được cập nhật chính xác',
       'Kiểm tra thống kê định kỳ để nắm bắt tình hình sử dụng',
+      'Theo dõi AI Tự Học hàng ngày để đánh giá chất lượng chatbot',
+      'Review feedback Dislike để cải thiện knowledge base',
+      'Sử dụng ChatWidget (góc dưới phải) để test chatbot mọi lúc',
     ],
   });
 
@@ -183,7 +229,8 @@ export default function HelpPage() {
         'Xem thời gian biểu các lịch đặt của mình và lịch chung',
         'Đánh giá thiết bị sau khi sử dụng',
         'Gửi yêu cầu hỗ trợ kỹ thuật khi gặp sự cố',
-        'Sử dụng Trợ lý AI để được hỗ trợ',
+        'Sử dụng Trợ lý AI (ChatWidget) để được hỗ trợ 24/7',
+        'Đóng góp cải thiện AI bằng Like/Dislike trên câu trả lời',
       ],
     },
     guides: [
@@ -267,12 +314,38 @@ export default function HelpPage() {
           },
         ],
       },
+      {
+        key: 'chatbot',
+        icon: <MessageOutlined />,
+        title: 'Sử dụng Trợ lý AI',
+        steps: [
+          {
+            title: 'Mở ChatWidget',
+            description: 'Nhấn vào icon AI (hình robot) ở góc dưới bên phải màn hình. Widget có sẵn trên mọi trang trong hệ thống',
+          },
+          {
+            title: 'Đặt câu hỏi',
+            description: 'Gõ câu hỏi về thiết bị, lịch đặt, quy trình sử dụng hoặc bất kỳ thông tin nào. AI sẽ tự động tìm và trả lời dựa trên knowledge base',
+          },
+          {
+            title: 'Đánh giá câu trả lời',
+            description: 'Sau mỗi câu trả lời, nhấn nút Like (👍) nếu hữu ích hoặc Dislike (👎) nếu chưa chính xác. Feedback của bạn giúp AI học và cải thiện',
+          },
+          {
+            title: 'Xem badge thông báo',
+            description: 'Badge màu đỏ trên icon AI cho biết số tin nhắn chưa đọc. Nhấn vào để mở widget',
+          },
+        ],
+      },
     ],
     tips: [
       'Đặt lịch trước ít nhất 1 ngày để Admin có thời gian phê duyệt',
       'Kiểm tra thời gian biểu trước khi đặt để tránh trùng lịch',
       'Đánh giá thiết bị sau khi sử dụng để giúp cải thiện chất lượng',
       'Mô tả chi tiết khi tạo yêu cầu hỗ trợ để kỹ thuật viên xử lý nhanh hơn',
+      'Click vào icon AI (góc dưới phải) để chat với trợ lý thông minh',
+      'Đánh giá Like/Dislike sau mỗi câu trả lời để AI học và cải thiện',
+      'ChatWidget có sẵn trên mọi trang, sử dụng bất cứ khi nào cần',
     ],
   });
 
@@ -286,6 +359,7 @@ export default function HelpPage() {
         'Xem lịch bảo trì theo calendar',
         'Quản lý và cập nhật trạng thái thiết bị',
         'Xem lịch sử công việc đã hoàn thành',
+        'Sử dụng ChatWidget AI để tra cứu thông tin nhanh',
       ],
     },
     guides: [
@@ -391,6 +465,8 @@ export default function HelpPage() {
       'Ghi chú chi tiết về công việc đã làm để có thể tra cứu sau này',
       'Kiểm tra lịch bảo trì hàng ngày để không bỏ lỡ công việc',
       'Cập nhật trạng thái thiết bị ngay sau khi hoàn thành sửa chữa/bảo trì',
+      'Dùng ChatWidget AI để tra cứu lịch sử sửa chữa hoặc thông số thiết bị',
+      'Đánh giá feedback AI để cải thiện chất lượng tra cứu thông tin',
     ],
   });
 
@@ -427,43 +503,37 @@ export default function HelpPage() {
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <Spin size="large" />
-        </div>
+      <div className={styles.loadingContainer}>
+        <Spin size="large" />
       </div>
     );
   }
 
   if (!content) {
     return (
-      <div className={styles.container}>
-        <Alert
-          message="Lỗi"
-          description="Không thể tải hướng dẫn sử dụng"
-          type="error"
-          showIcon
-        />
-      </div>
+      <Alert
+        message="Lỗi"
+        description="Không thể tải hướng dẫn sử dụng"
+        type="error"
+        showIcon
+      />
     );
   }
 
   return (
-    <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <QuestionCircleOutlined className={styles.headerIcon} style={{ color: roleInfo.color }} />
-          <div>
-            <h1>Trợ giúp & Hướng dẫn</h1>
-            <p>
-              <Tag color={roleInfo.color} icon={roleInfo.icon}>
-                {roleInfo.title}
-              </Tag>
-              Xin chào <strong>{userInfo?.fullName}</strong>! Dưới đây là hướng dẫn sử dụng hệ thống dành cho bạn.
-            </p>
-          </div>
-        </div>
+    <div>
+      {/* Page Title */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={2} style={{ marginBottom: 8 }}>
+          <QuestionCircleOutlined style={{ marginRight: 8, color: roleInfo.color }} />
+          Trợ giúp & Hướng dẫn
+        </Title>
+        <Paragraph style={{ fontSize: 16, marginBottom: 0 }}>
+          <Tag color={roleInfo.color} icon={roleInfo.icon}>
+            {roleInfo.title}
+          </Tag>
+          Xin chào <strong>{userInfo?.fullName}</strong>! Dưới đây là hướng dẫn sử dụng hệ thống dành cho bạn.
+        </Paragraph>
       </div>
 
       {/* Overview */}

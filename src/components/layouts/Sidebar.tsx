@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Avatar, Spin, App } from 'antd';
-import { HomeOutlined, LaptopOutlined, UserOutlined, BarChartOutlined, BugOutlined, SettingOutlined, QuestionCircleOutlined, LogoutOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { HomeOutlined, LaptopOutlined, UserOutlined, BarChartOutlined, BugOutlined, SettingOutlined, QuestionCircleOutlined, LogoutOutlined, ExclamationCircleOutlined, MessageOutlined, BulbOutlined, HistoryOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import styles from './Sidebar.module.css';
@@ -38,6 +38,12 @@ const getMenuItems = (role?: string, handleLogout?: () => void) => {
       { key: '/admin/statistics', icon: <BarChartOutlined />, label: <Link href="/admin/statistics">Tần suất sử dụng thiết bị</Link> },
       { key: '/admin/incidents', icon: <BugOutlined />, label: <Link href="/admin/incidents">Báo cáo sự cố</Link> },
     ]},
+    { type: 'divider' as const },
+    { key: 'ai', label: 'TRÍ TUỆ NHÂN TẠO', type: 'group' as const, children: [
+      { key: '/admin/train', icon: <QuestionCircleOutlined />, label: <Link href="/admin/train">Huấn luyện Chatbot</Link> },
+      { key: '/admin/ai-feedback', icon: <MessageOutlined />, label: <Link href="/admin/ai-feedback">Thống kê Feedback</Link> },
+      { key: '/admin/ai-learning-history', icon: <BulbOutlined />, label: <Link href="/admin/ai-learning-history">AI Tự Học</Link> },
+    ]},
   ];
   
   // Menu riêng cho Teacher
@@ -67,6 +73,10 @@ const getMenuItems = (role?: string, handleLogout?: () => void) => {
     { key: 'devices', label: 'THIẾT BỊ', type: 'group' as const, children: [
       { key: '/technician/devices', icon: <LaptopOutlined />, label: <Link href="/technician/devices">Quản lý thiết bị</Link> },
     ]},
+    { type: 'divider' as const },
+    { key: 'ai', label: 'TRÍ TUỆ NHÂN TẠO', type: 'group' as const, children: [
+      { key: '/technician/train', icon: <QuestionCircleOutlined />, label: <Link href="/technician/train">Huấn luyện Chatbot</Link> },
+    ]},
   ];
   
   // Menu hệ thống - chung cho tất cả role (luôn ở cuối)
@@ -74,7 +84,7 @@ const getMenuItems = (role?: string, handleLogout?: () => void) => {
     { type: 'divider' as const },
     { key: 'system', label: 'HỆ THỐNG', type: 'group' as const, children: [
       { key: '/admin/settings', icon: <SettingOutlined />, label: <Link href="/admin/settings">Cài đặt</Link> },
-      { key: '/admin/help', icon: <QuestionCircleOutlined />, label: <Link href="/admin/help">Trợ giúp</Link> },
+      { key: '/help', icon: <QuestionCircleOutlined />, label: <Link href="/help">Trợ giúp</Link> },
       { key: '/profile', icon: <UserOutlined />, label: <Link href="/profile">Hồ sơ của bạn</Link> },
       { 
         key: '/logout', 

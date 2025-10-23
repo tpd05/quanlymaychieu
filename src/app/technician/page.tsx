@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Tag, Spin, App, Button } from 'antd';
+import { Card, Row, Col, Statistic, Table, Tag, Spin, App, Button, Divider } from 'antd';
 import { 
   ExclamationCircleOutlined, 
   ClockCircleOutlined, 
@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import styles from './technician.module.css';
+import HomePageContent from '@/components/HomePageContent';
 
 interface SupportRequest {
   id: string;
@@ -217,10 +218,6 @@ export default function TechnicianDashboard() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>Dashboard Kỹ Thuật Viên</h1>
-        <p>Tổng quan công việc và nhiệm vụ của bạn</p>
-      </div>
 
       <Spin spinning={loading}>
         {/* Statistics Cards */}
@@ -266,6 +263,8 @@ export default function TechnicianDashboard() {
             </Card>
           </Col>
         </Row>
+
+        <HomePageContent />
 
         {/* Urgent Requests */}
         {urgentRequests.length > 0 && (
@@ -328,6 +327,10 @@ export default function TechnicianDashboard() {
             </div>
           </Card>
         )}
+
+        <Divider style={{ margin: '32px 0' }} />
+
+        {/* Carousel and Info Section */}
       </Spin>
     </div>
   );

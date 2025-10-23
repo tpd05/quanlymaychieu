@@ -1,13 +1,41 @@
 "use client";
 
-import React from 'react';
-import { Row, Col, Card, Button, Carousel } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Button, Carousel, Spin } from 'antd';
 import { LaptopOutlined, CheckCircleOutlined, ToolOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import styles from './HomePage.module.css';
+
+interface ProjectorStats {
+  total: number;
+  available: number;
+  maintenance: number;
+  broken: number;
+  inUse: number;
+}
 
 export default function HomePage() {
   const carouselRef = React.useRef<any>(null);
   const chatbotRef = React.useRef<any>(null);
+  const [stats, setStats] = useState<ProjectorStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/projectors/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   return (
     <div>
@@ -24,41 +52,53 @@ export default function HomePage() {
       <Row gutter={[16, 16]} className={styles.statsRow}>
         <Col xs={24} md={8}>
           <Card className={styles.statsCard}>
-            <div className={styles.statsContent}>
-              <div className={styles.statIconBlue}>
-                <LaptopOutlined className={styles.statIcon} />
+            {loading ? (
+              <Spin />
+            ) : (
+              <div className={styles.statsContent}>
+                <div className={styles.statIconBlue}>
+                  <LaptopOutlined className={styles.statIcon} />
+                </div>
+                <div>
+                  <div className={styles.statValue}>{stats?.total || 0}</div>
+                  <div className={styles.statLabel}>Tổng số máy chiếu</div>
+                </div>
               </div>
-              <div>
-                <div className={styles.statValue}>48</div>
-                <div className={styles.statLabel}>Tổng số máy chiếu</div>
-              </div>
-            </div>
+            )}
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className={styles.statsCard}>
-            <div className={styles.statsContent}>
-              <div className={styles.statIconGreen}>
-                <CheckCircleOutlined className={styles.statIcon} />
+            {loading ? (
+              <Spin />
+            ) : (
+              <div className={styles.statsContent}>
+                <div className={styles.statIconGreen}>
+                  <CheckCircleOutlined className={styles.statIcon} />
+                </div>
+                <div>
+                  <div className={styles.statValue}>{stats?.available || 0}</div>
+                  <div className={styles.statLabel}>Sẵn sàng</div>
+                </div>
               </div>
-              <div>
-                <div className={styles.statValue}>36</div>
-                <div className={styles.statLabel}>Đang hoạt động</div>
-              </div>
-            </div>
+            )}
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className={styles.statsCard}>
-            <div className={styles.statsContent}>
-              <div className={styles.statIconYellow}>
-                <ToolOutlined className={styles.statIcon} />
+            {loading ? (
+              <Spin />
+            ) : (
+              <div className={styles.statsContent}>
+                <div className={styles.statIconYellow}>
+                  <ToolOutlined className={styles.statIcon} />
+                </div>
+                <div>
+                  <div className={styles.statValue}>{stats?.maintenance || 0}</div>
+                  <div className={styles.statLabel}>Bảo trì</div>
+                </div>
               </div>
-              <div>
-                <div className={styles.statValue}>8</div>
-                <div className={styles.statLabel}>Bảo trì</div>
-              </div>
-            </div>
+            )}
           </Card>
         </Col>
       </Row>

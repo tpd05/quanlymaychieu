@@ -10,6 +10,12 @@
 				"$eslint-stylish"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Install project dependencies",
+			"type": "shell",
+			"command": "npm install",
+			"group": "build"
 		}
 	]
 }

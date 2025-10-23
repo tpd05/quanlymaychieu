@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Calendar, Badge, List, App } from 'antd';
+import { Card, Row, Col, Statistic, Calendar, Badge, List, App, Divider } from 'antd';
 import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, LaptopOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
+import HomePageContent from '@/components/HomePageContent';
 
 interface BookingStats {
   pending: number;
@@ -71,7 +72,6 @@ export default function TeacherPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 24 }}>Dashboard - Giáo viên</h1>
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -116,6 +116,8 @@ export default function TeacherPage() {
           </Card>
         </Col>
       </Row>
+      {/* Carousel and Info Section */}
+      <HomePageContent />
 
       <Row gutter={[16, 16]}>
         {/* Calendar */}
@@ -151,6 +153,10 @@ export default function TeacherPage() {
           </Card>
         </Col>
       </Row>
+
+      <Divider style={{ margin: '32px 0' }} />
+
+
     </div>
   );
 }
