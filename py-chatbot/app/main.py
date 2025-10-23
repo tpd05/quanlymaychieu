@@ -1,7 +1,7 @@
 import os
 import json
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -25,17 +25,24 @@ def st_device_name() -> str:
 
 app = FastAPI(title="QLMC Chatbot Service", version="0.4.1")
 
-# CORS Configuration - Allow Next.js frontend to call API
+# CORS Configuration - allow frontend origins configured via env and Vercel subdomains
+# Build allowed origins list from environment (remove empty values)
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if _frontend_url:
+    allowed_origins.append(_frontend_url)
+
+# Use a regex to allow Vercel preview/app domains (e.g. https://abc.vercel.app)
+# If FRONTEND_URL is not provided, still accept vercel subdomains via regex
+allow_origin_regex = r"^https:\/\/.*\\.vercel\.app$"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://192.168.1.88:3000",
-        "http://192.168.1.100:3000",
-        "https://*.vercel.app",  # Allow all Vercel preview deployments
-        os.getenv("FRONTEND_URL", ""),  # Allow custom frontend URL from env
-    ],
+    allow_origins=[o for o in allowed_origins if o],
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -354,6 +361,16 @@ async def health():
         "data_dir": DATA_DIR,
         "autosave_seconds": AUTOSAVE_SECONDS,
     }
+
+
+@app.get("/debug/origin")
+async def debug_origin(request: Request):
+    # Return headers to help debug CORS and origin issues
+    try:
+        headers = {k: v for k, v in request.headers.items()}
+    except Exception:
+        headers = {"error": "unable to read headers"}
+    return {"ok": True, "headers": headers}
 
 
 @app.post("/nlp/parse", response_model=ParseOut)

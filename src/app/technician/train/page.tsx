@@ -17,7 +17,7 @@ export default function TechnicianTrainPage() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
-      const res = await fetch('http://127.0.0.1:8001/index/stats');
+      const res = await fetch('/api/python/stats');
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -87,7 +87,7 @@ export default function TechnicianTrainPage() {
   const saveIndex = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8001/index/save', { method: 'POST' });
+      const res = await fetch('/api/python/save', { method: 'POST' });
       if (!res.ok) throw new Error('Lưu thất bại');
       message.success('Đã lưu index thành công!');
       fetchStats();
@@ -101,7 +101,7 @@ export default function TechnicianTrainPage() {
   const loadIndex = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8001/index/load', { method: 'POST' });
+      const res = await fetch('/api/python/load', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error('Tải thất bại');
       message.success(`Đã tải index: ${data.index_size} đoạn.`);
