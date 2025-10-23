@@ -12,8 +12,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Disable output file tracing to prevent build-time Prisma errors
-  output: 'standalone',
+  // Configure serverComponentsExternalPackages to handle Prisma properly
+  serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   
   // Suppress React 19 warning from Ant Design
   webpack: (config, { isServer }) => {
