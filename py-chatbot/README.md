@@ -1,53 +1,191 @@
-# QLMC Chatbot (PyTorch, FastAPI, GPU)
+# QLMC Python AI Backend
 
-This service provides NLP parsing and RAG answers using PyTorch. It is designed to run with GPU (CUDA) when available.
+🤖 Backend AI cho hệ thống Quản Lý Máy Chiếu (QLMC) sử dụng FastAPI, PyTorch, FAISS và Transformers.
 
-## Prerequisites
-- Python 3.10+
-- NVIDIA GPU + CUDA 12.1 drivers (matching torch 2.4.1+cu121)
+## 🌟 Features
 
-## Setup (Windows PowerShell)
+- **RAG (Retrieval-Augmented Generation)**: Trả lời câu hỏi dựa trên knowledge base
+- **Vector Search**: FAISS với multilingual embedding model
+- **Extractive QA**: XLM-RoBERTa cho câu trả lời chính xác
+- **Feedback Learning**: Cải thiện ranking dựa trên user feedback
+- **Persistent Storage**: Auto-save FAISS index và metadata
+- **CORS Support**: Tích hợp với Next.js frontend
+
+## 🚀 Tech Stack
+
+- **FastAPI** 0.115.0 - Web framework
+- **PyTorch** 2.4.1 - Deep learning
+- **Transformers** 4.46.1 - NLP models
+- **FAISS** 1.12.0 - Vector similarity search
+- **Uvicorn** 0.30.6 - ASGI server
+
+## 📦 Local Setup
+
+### Prerequisites
+- Python 3.11+
+- pip
+
+### Installation
 
 ```powershell
-# 1) Create venv and activate (use 'python' instead of 'py')
-python -m venv .venv; .\.venv\Scripts\Activate.ps1
+# Create virtual environment
+python -m venv .venv
 
-# If activation is blocked by policy, run this in the same PowerShell:
-# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+# Activate (Windows PowerShell)
+.\.venv\Scripts\Activate.ps1
 
-# 2) Upgrade pip
-python -m pip install --upgrade pip
+# Activate (Linux/Mac)
+# source .venv/bin/activate
 
-# 3) Install CUDA-enabled PyTorch (CUDA 12.1). If you don't have CUDA, skip to step 4.
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# 4) Install remaining dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 5) Run the service
-uvicorn app.main:app --host 127.0.0.1 --port 8001
+# Run server
+uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-Check health:
+### Test
+
 ```powershell
 curl http://127.0.0.1:8001/health
 ```
 
-Expected JSON includes: `cuda_available: true` and `device: cuda:0` if GPU is used.
+## ☁️ Deploy to Render
 
-## Environment in Next.js
-Set the Python service URL:
+Xem hướng dẫn chi tiết tại: **[RENDER_DEPLOY.md](./RENDER_DEPLOY.md)**
+
+### Quick Start
+
+1. Push code lên GitHub (repository riêng)
+2. Tạo Web Service trên Render
+3. Connect repository
+4. Cấu hình Environment Variables:
+   - `CHATBOT_DATA_DIR=/opt/render/project/src/store`
+   - `FRONTEND_URL=https://qlmc.vercel.app`
+5. Deploy!
+
+## 📚 API Endpoints
+
+### Health Check
 ```
-PY_CHATBOT_URL=http://127.0.0.1:8001
+GET /health
 ```
 
-## Next steps
-- Add FAISS index build and retrieval pipeline
-- Add intent classifier and NER models (PhoBERT/XLM-R)
-- Implement extractive QA model for Vietnamese
-- Secure endpoints and rate-limit
+### RAG Answer
+```
+POST /rag/answer
+{
+  "question": "Máy chiếu bị mờ hình phải làm sao?",
+  "top_k": 5
+}
+```
 
-## Persistence (FAISS index + metadata)
+### Vector Search
+```
+POST /search
+{
+  "query": "bảo trì máy chiếu",
+  "top_k": 5,
+  "role": "teacher"
+}
+```
+
+### Embed Documents
+```
+POST /embed
+{
+  "docId": "doc-001",
+  "chunks": ["Nội dung chunk 1", "Nội dung chunk 2"],
+  "rolesAllowed": ["teacher", "admin"],
+  "title": "Hướng dẫn bảo trì",
+  "intent": "maintenance",
+  "keywords": ["bảo trì", "vệ sinh"]
+}
+```
+
+### Index Stats
+```
+GET /index/stats
+```
+
+### Save/Load Index
+```
+POST /index/save
+POST /index/load
+```
+
+### Feedback Learning
+```
+POST /feedback/update
+{
+  "docId": "doc-001",
+  "feedbackScore": 1.0  // Positive for like, negative for dislike
+}
+```
+
+## 🧪 API Documentation
+
+Swagger UI: `http://localhost:8001/docs`
+
+## 📁 Project Structure
+
+```
+py-chatbot/
+├── app/
+│   └── main.py           # FastAPI application
+├── store/                # FAISS index và metadata (gitignored)
+│   ├── faiss.index
+│   └── meta.json
+├── requirements.txt      # Python dependencies
+├── Procfile              # Render start command
+├── runtime.txt           # Python version for Render
+├── .python-version       # Python version
+├── .gitignore
+├── README.md
+└── RENDER_DEPLOY.md      # Deploy guide
+```
+
+## 🔧 Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMBED_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Embedding model |
+| `QA_MODEL_NAME` | `deepset/xlm-roberta-base-squad2` | QA model |
+| `CHATBOT_DATA_DIR` | `./store` | Path to FAISS index |
+| `FRONTEND_URL` | - | Frontend URL for CORS |
+| `AUTOSAVE_SECONDS` | `300` | Auto-save interval (0 to disable) |
+| `QA_TOP_CONTEXTS` | `3` | Number of contexts for QA |
+
+## 📊 Performance
+
+- **Embedding**: ~100ms/query
+- **Search**: ~10ms with 1000 documents
+- **RAG Answer**: ~300ms (embedding + search + QA)
+- **Memory**: ~500MB with models loaded
+
+## 🔐 Security
+
+⚠️ **Production Recommendations**:
+- Add API key authentication
+- Rate limiting
+- Input validation
+- HTTPS only
+
+## 📝 License
+
+Private project - All rights reserved
+
+## 🤝 Contributing
+
+This is a private project. Contact project owner for contribution guidelines.
+
+## 📧 Support
+
+For issues and questions, contact: admin@qlmc.com
+
+---
+
+Made with ❤️ for QLMC Project
  - Automatic periodic save is enabled via `AUTOSAVE_SECONDS` (default 300 seconds). Set `AUTOSAVE_SECONDS=0` to disable.
 
 Endpoints:

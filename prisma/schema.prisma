@@ -1,12 +1,12 @@
 // Prisma schema for QLMC (projector management)
-// Provider: MySQL (XAMPP)
+// Provider: MongoDB Atlas
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -46,7 +46,7 @@ enum SupportRequestPriority {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userID    String   @unique
   fullName  String
   email     String   @unique
@@ -62,7 +62,7 @@ model User {
 }
 
 model Projector {
-  id                   String          @id @default(uuid())
+  id                   String          @id @default(auto()) @map("_id") @db.ObjectId
   name                 String
   model                String
   serialNumber         String          @unique
@@ -80,11 +80,11 @@ model Projector {
 }
 
 model Booking {
-  id          String         @id @default(uuid())
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
   projector   Projector      @relation(fields: [projectorId], references: [id], onDelete: Cascade)
-  projectorId String
+  projectorId String         @db.ObjectId
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
+  userId      String         @db.ObjectId
   startTime   DateTime
   endTime     DateTime
   purpose     String
@@ -92,73 +92,57 @@ model Booking {
   createdAt   DateTime       @default(now())
 
   review      Review?
-
-  @@index([projectorId])
-  @@index([userId])
-  @@index([startTime, endTime])
 }
 
 model Review {
-  id          String    @id @default(uuid())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingId   String    @unique
+  bookingId   String    @unique @db.ObjectId
   rating      Int       // 1-5 stars
-  comment     String?   @db.Text
+  comment     String?
   createdAt   DateTime  @default(now())
-
-  @@index([bookingId])
 }
 
 model ChatbotFeedback {
-  id            String   @id @default(uuid())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  question      String   @db.Text
-  answer        String   @db.Text
+  userId        String   @db.ObjectId
+  question      String
+  answer        String
   feedback      String   // "like" hoặc "dislike"
-  sources       String?  @db.Text // JSON array of source documents
+  sources       String?  // JSON array of source documents
   createdAt     DateTime @default(now())
-
-  @@index([userId])
-  @@index([feedback])
-  @@index([createdAt])
 }
 
 model SupportRequest {
-  id          String                   @id @default(uuid())
+  id          String                   @id @default(auto()) @map("_id") @db.ObjectId
   user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
+  userId      String                   @db.ObjectId
   projector   Projector?               @relation(fields: [projectorId], references: [id])
-  projectorId String?
+  projectorId String?                  @db.ObjectId
   title       String
-  description String                   @db.Text
+  description String
   priority    SupportRequestPriority   @default(medium)
   status      SupportRequestStatus     @default(pending)
   category    String?                  // e.g., "technical", "maintenance", "other"
-  attachments String?                  @db.Text // JSON array of file paths
-  response    String?                  @db.Text
+  attachments String?                  // JSON array of file paths
+  response    String?
   respondedBy String?                  // UserID of technician
   respondedAt DateTime?
   scheduledStartTime DateTime?         // Scheduled maintenance start time
   scheduledEndTime   DateTime?         // Scheduled maintenance end time
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
-
-  @@index([userId])
-  @@index([projectorId])
-  @@index([status])
 }
 
 model AILearningLog {
-  id                String   @id @default(uuid())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
   totalFeedback     Int      // Tổng số feedback trong ngày
   likeCount         Int      // Số lượt like
   dislikeCount      Int      // Số lượt dislike
   documentsUpdated  Int      // Số documents đã cập nhật
-  topQuestions      String   @db.Text // JSON array of top questions
-  improvements      String   @db.Text // JSON array of improvements
+  topQuestions      String   // JSON array of top questions
+  improvements      String   // JSON array of improvements
   learningDate      DateTime @default(now()) // Ngày học
   createdAt         DateTime @default(now())
-
-  @@index([learningDate])
 }

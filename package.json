@@ -20,6 +20,7 @@
     "bcryptjs": "^2.4.3",
     "dayjs": "^1.11.18",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "5.5",
     "next": "15.5.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -34,9 +35,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^8.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
-    "concurrently": "^8.2.2",
     "prisma": "^5.22.0",
     "tsx": "^4.20.6",
     "typescript": "^5"

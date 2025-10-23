@@ -33,6 +33,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://192.168.1.88:3000",
         "http://192.168.1.100:3000",
+        "https://*.vercel.app",  # Allow all Vercel preview deployments
+        os.getenv("FRONTEND_URL", ""),  # Allow custom frontend URL from env
     ],
     allow_credentials=True,
     allow_methods=["*"],
