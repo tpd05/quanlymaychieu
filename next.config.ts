@@ -12,11 +12,26 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // Disable output file tracing to prevent build-time Prisma errors
+  output: 'standalone',
+  
   // Suppress React 19 warning from Ant Design
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.ignoreWarnings = [
       { module: /node_modules\/antd/ },
     ];
+    
+    // Exclude Prisma from client bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
+    
     return config;
   },
 };

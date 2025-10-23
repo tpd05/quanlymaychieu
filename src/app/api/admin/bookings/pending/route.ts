@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { completeApprovedOverdue } from '@/utils/bookingMaintenance';
 import { getCurrentUser } from '@/utils/auth';
 
+// Force dynamic rendering for API routes
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Get all pending bookings (admin only)
 export async function GET() {
   try {
