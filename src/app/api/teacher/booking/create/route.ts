@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/utils/auth';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function POST(request: Request) {
   try {
@@ -24,10 +29,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const start = dayjs(startTime);
-    const end = dayjs(endTime);
+    // Parse time in Vietnam timezone (UTC+7)
+    const start = dayjs(startTime).tz('Asia/Ho_Chi_Minh');
+    const end = dayjs(endTime).tz('Asia/Ho_Chi_Minh');
 
-    // Validate time range 6h-22h
+    // Validate time range 6h-22h (using Vietnam time)
     const startHour = start.hour();
     const endHour = end.hour();
 
