@@ -19,6 +19,9 @@ const py = process.env.PYTHON_EXEC || (fs.existsSync(defaultVenvPy) ? defaultVen
 // Compose command: python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
 const args = ['-m', 'uvicorn', 'app.main:app', '--host', host, '--port', port];
 
+// Set UTF-8 encoding for Windows to avoid Unicode errors
+const env = { ...process.env, PYTHONIOENCODING: 'utf-8' };
+
 // Preflight: check python is callable and has required modules
 const preflightCode = 'import sys; import importlib.util; mods=["uvicorn","fastapi","transformers","faiss","torch"]; missing=[m for m in mods if importlib.util.find_spec(m) is None]; print("MISSING:", ",".join(missing)); sys.exit(1 if missing else 0)';
 const preflight = spawnSync(py, ['-c', preflightCode], { cwd: aiCwd, stdio: 'pipe' });
@@ -44,7 +47,7 @@ const child = spawn(py, args, {
   stdio: 'inherit',
   shell: true, // to make it work on Windows with PATH-resolved python
   env: {
-    ...process.env,
+    ...env, // Use env variable with PYTHONIOENCODING
     // You can set defaults here; users can override via their shell
     PY_CHATBOT_URL: `http://${host}:${port}`,
     // Example: autosave every 5 minutes
