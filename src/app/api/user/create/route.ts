@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyJwtToken } from '@/lib/jwt';
 import { hashPassword } from '@/lib/bcrypt';
+import { validateStrongPassword } from '@/lib/passwordPolicy';
 import { generateUserID } from '@/utils/generateUserID';
 
 export async function POST(req: NextRequest) {
@@ -17,30 +18,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
-    const { fullName, email, password, role, isActive } = await req.json();
+    const { fullName, password, role, isActive } = await req.json();
 
-    // Validate required fields (userID is now auto-generated)
-    if (!fullName || !email || !password || !role) {
+    // Validate required fields (userID is now auto-generated, no email needed)
+    if (!fullName || !password || !role) {
       return NextResponse.json(
         { message: 'Thiếu thông tin bắt buộc' },
         { status: 400 }
       );
     }
 
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { message: 'Email đã được sử dụng' },
-        { status: 400 }
-      );
-    }
-
     // Generate unique userID
     const userID = await generateUserID();
+
+    // Enforce password policy
+    const policy = validateStrongPassword(password);
+    if (!policy.ok) {
+      return NextResponse.json({ message: policy.message }, { status: 400 });
+    }
 
     // Hash password
     const hashedPassword = await hashPassword(password);
@@ -50,7 +45,7 @@ export async function POST(req: NextRequest) {
       data: {
         userID,
         fullName,
-        email,
+        email: null,
         password: hashedPassword,
         role,
         isActive: isActive !== undefined ? isActive : true,
@@ -60,6 +55,7 @@ export async function POST(req: NextRequest) {
         userID: true,
         fullName: true,
         email: true,
+        googleEmail: true,
         role: true,
         isActive: true,
         createdAt: true,

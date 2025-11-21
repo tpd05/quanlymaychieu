@@ -133,6 +133,8 @@ Swagger UI: `http://localhost:8001/docs`
 py-chatbot/
 ├── app/
 │   └── main.py           # FastAPI application
+├── build_static_index.py # Offline build of FAISS index (commit output in prebuilt/)
+├── prebuilt/             # OPTIONAL committed index (faiss.index, meta.json)
 ├── store/                # FAISS index và metadata (gitignored)
 │   ├── faiss.index
 │   └── meta.json
@@ -149,9 +151,12 @@ py-chatbot/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBED_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Embedding model |
+| `EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model |
 | `QA_MODEL_NAME` | `deepset/xlm-roberta-base-squad2` | QA model |
 | `CHATBOT_DATA_DIR` | `./store` | Path to FAISS index |
+| `PREBUILT_INDEX_DIR` | `./prebuilt` | Directory containing committed prebuilt index |
+| `BOOTSTRAP_KNOWLEDGE` | `0` | If `1`, auto-embed knowledge.vi.json on startup when empty |
+| `KNOWLEDGE_JSON_PATH` | `../data/knowledge.vi.json` | Knowledge base file for bootstrap/build |
 | `FRONTEND_URL` | - | Frontend URL for CORS |
 | `AUTOSAVE_SECONDS` | `300` | Auto-save interval (0 to disable) |
 | `QA_TOP_CONTEXTS` | `3` | Number of contexts for QA |
@@ -201,6 +206,47 @@ curl -Method POST http://127.0.0.1:8001/index/save
 curl -Method POST http://127.0.0.1:8001/index/load
 curl http://127.0.0.1:8001/index/stats
 ```
+
+## 🗄️ Persistent Pre-Trained Index
+Render (free tier) puts services to sleep; on restart the Python process must reload embeddings. To avoid re-training manually each time, you can COMMIT a prebuilt FAISS index.
+
+### Option A: Commit Prebuilt Files
+1. Activate venv & install deps.
+2. Run the offline build script:
+  ```powershell
+  python py-chatbot/build_static_index.py
+  ```
+3. This creates `py-chatbot/prebuilt/faiss.index` and `py-chatbot/prebuilt/meta.json`.
+4. Commit those two files:
+  ```powershell
+  git add py-chatbot/prebuilt/faiss.index py-chatbot/prebuilt/meta.json
+  git commit -m "chore(ai): add prebuilt faiss index"
+  git push
+  ```
+5. On startup the service copies them into `store/` automatically.
+
+### Option B: Auto Bootstrap From Knowledge
+Set `BOOTSTRAP_KNOWLEDGE=1` (and ensure `knowledge.vi.json` exists). On cold start if index empty it will embed all documents.
+
+### Updating Knowledge
+After editing `data/knowledge.vi.json` re-run build:
+```powershell
+python py-chatbot/build_static_index.py
+git add py-chatbot/prebuilt/*
+git commit -m "feat(ai): refresh prebuilt index"
+git push
+```
+
+### Verifying
+```powershell
+curl http://127.0.0.1:8001/index/stats
+```
+Fields:
+- `index_size` > 0 and `files.index_exists=true` means load success.
+
+### Notes
+- Do NOT commit virtualenv or large HF model weights; only the small `faiss.index` + `meta.json`.
+- If embedding model changes, rebuild index (dimension must match or it will auto-rebuild).
 
 ## Extractive QA (Vietnamese-friendly)
 - The service uses a multilingual QA model by default: `deepset/xlm-roberta-base-squad2`.

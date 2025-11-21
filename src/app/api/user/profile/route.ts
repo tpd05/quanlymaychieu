@@ -15,36 +15,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { fullName, email, avatar } = await req.json();
+    const { fullName, avatar } = await req.json();
 
-    // Get current user data from database
-    const user = await prisma.user.findUnique({
-      where: { id: currentUser.userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
-
-    // Check if email is already used by another user
-    if (email !== user.email) {
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (existingUser && existingUser.id !== currentUser.userId) {
-        return NextResponse.json(
-          { message: 'Email đã được sử dụng bởi tài khoản khác' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Update user profile
+    // Update user profile (email cannot be changed - managed via Google link)
     const updatedUser = await prisma.user.update({
       where: { id: currentUser.userId },
       data: {
         fullName,
-        email,
         avatar,
       },
       select: {
@@ -52,6 +29,7 @@ export async function PUT(req: NextRequest) {
         userID: true,
         fullName: true,
         email: true,
+        googleEmail: true,
         avatar: true,
         role: true,
       },

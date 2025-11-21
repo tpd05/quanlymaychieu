@@ -49,6 +49,10 @@ const child = spawn(py, args, {
     PY_CHATBOT_URL: `http://${host}:${port}`,
     // Example: autosave every 5 minutes
     AUTOSAVE_SECONDS: process.env.AUTOSAVE_SECONDS || '300',
+    // Optional: bootstrap knowledge on startup when index empty
+    BOOTSTRAP_KNOWLEDGE: process.env.BOOTSTRAP_KNOWLEDGE || '0',
+    // Prebuilt directory (committed to Git) used to copy index on cold start
+    PREBUILT_INDEX_DIR: process.env.PREBUILT_INDEX_DIR || `${aiCwd}\\prebuilt`,
   },
 });
 

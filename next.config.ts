@@ -12,9 +12,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Configure serverComponentsExternalPackages to handle Prisma properly
-  serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
-  
   // Suppress React 19 warning from Ant Design
   webpack: (config, { isServer }) => {
     config.ignoreWarnings = [

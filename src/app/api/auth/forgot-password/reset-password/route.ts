@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/bcrypt';
 import { verificationCodes } from '@/lib/verification';
+import { validateStrongPassword } from '@/lib/passwordPolicy';
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,11 @@ export async function POST(request: Request) {
         { message: 'Email, mã xác thực và mật khẩu mới là bắt buộc' },
         { status: 400 }
       );
+    }
+
+    const policy = validateStrongPassword(newPassword);
+    if (!policy.ok) {
+      return NextResponse.json({ message: policy.message }, { status: 400 });
     }
 
     // Verify code again
@@ -40,9 +46,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Find user by email (check both regular and Google email)
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          { googleEmail: email },
+        ],
+      },
     });
 
     if (!user) {
@@ -57,7 +68,7 @@ export async function POST(request: Request) {
 
     // Update password
     await prisma.user.update({
-      where: { email },
+      where: { id: user.id },
       data: { password: hashedPassword },
     });
 

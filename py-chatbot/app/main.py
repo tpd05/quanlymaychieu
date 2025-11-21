@@ -195,6 +195,10 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.getenv("CHATBOT_DATA_DIR", os.path.join(BASE_DIR, "store"))
 INDEX_PATH = os.path.join(DATA_DIR, "faiss.index")
 META_PATH = os.path.join(DATA_DIR, "meta.json")
+PREBUILT_DIR = os.getenv("PREBUILT_INDEX_DIR", os.path.join(BASE_DIR, "prebuilt"))
+PREBUILT_INDEX_PATH = os.path.join(PREBUILT_DIR, "faiss.index")
+PREBUILT_META_PATH = os.path.join(PREBUILT_DIR, "meta.json")
+KNOWLEDGE_JSON_PATH = os.getenv("KNOWLEDGE_JSON_PATH", os.path.abspath(os.path.join(BASE_DIR, "..", "data", "knowledge.vi.json")))
 
 
 def _normalize(x: np.ndarray) -> np.ndarray:
@@ -209,15 +213,26 @@ def _ensure_data_dir() -> None:
 
 def _save_metadata() -> None:
     _ensure_data_dir()
+    metadata = {
+        "doc_ids": store_doc_ids,
+        "texts": store_texts,
+        "roles": store_roles,
+        "titles": store_titles,
+        "intents": store_intents,
+        "keywords": store_keywords
+    }
+    # Save to store directory (ephemeral on Render)
     with open(META_PATH, "w", encoding="utf-8") as f:
-        json.dump({
-            "doc_ids": store_doc_ids,
-            "texts": store_texts,
-            "roles": store_roles,
-            "titles": store_titles,
-            "intents": store_intents,
-            "keywords": store_keywords
-        }, f, ensure_ascii=False)
+        json.dump(metadata, f, ensure_ascii=False)
+    
+    # Also save to prebuilt directory (should be committed to Git for persistence)
+    try:
+        os.makedirs(PREBUILT_DIR, exist_ok=True)
+        with open(PREBUILT_META_PATH, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False)
+        print(f"[persistence] Metadata saved to both store/ and prebuilt/")
+    except Exception as e:
+        print(f"[persistence] Warning: Could not save to prebuilt/: {e}")
 
 
 def _load_metadata() -> bool:
@@ -258,7 +273,16 @@ def _load_metadata() -> bool:
 
 def _save_faiss() -> None:
     _ensure_data_dir()
+    # Save to store directory
     faiss.write_index(faiss_index, INDEX_PATH)
+    
+    # Also save to prebuilt directory for Git persistence
+    try:
+        os.makedirs(PREBUILT_DIR, exist_ok=True)
+        faiss.write_index(faiss_index, PREBUILT_INDEX_PATH)
+        print(f"[persistence] FAISS index saved to both store/ and prebuilt/")
+    except Exception as e:
+        print(f"[persistence] Warning: Could not save to prebuilt/: {e}")
 
 
 def _load_faiss() -> bool:
@@ -636,18 +660,138 @@ async def _autosave_loop():
 
 @app.on_event("startup")
 async def _startup_load_index():
-    # Attempt to load existing index and metadata on startup.
-    await async_load_index_and_meta()
-    # Start autosave loop if enabled
     global _autosave_task
+    
+    print("[startup] Initializing QLMC Chatbot Service...")
+    
+    # Priority 1: Load from prebuilt directory (committed to Git)
+    # This ensures persistence across Render restarts
+    if os.path.exists(PREBUILT_INDEX_PATH) and os.path.exists(PREBUILT_META_PATH):
+        print(f"[startup] Found prebuilt index, loading...")
+        try:
+            _ensure_data_dir()
+            import shutil
+            shutil.copy2(PREBUILT_INDEX_PATH, INDEX_PATH)
+            shutil.copy2(PREBUILT_META_PATH, META_PATH)
+            result = await async_load_index_and_meta()
+            if result.get("index_loaded") and result.get("meta_loaded"):
+                print(f"[startup] [OK] Successfully loaded prebuilt index with {result.get('index_size')} documents")
+                final_stats = {
+                    "index_size": len(store_texts),
+                    "emb_dim": EMB_DIM,
+                    "loaded": faiss_index.ntotal,
+                    "source": "prebuilt (Git)"
+                }
+                print(f"[startup] Index status: {final_stats}")
+                # Start autosave
+                if AUTOSAVE_SECONDS > 0:
+                    _autosave_task = asyncio.create_task(_autosave_loop())
+                return
+        except Exception as e:
+            print(f"[startup] Failed to load prebuilt index: {e}")
+    
+    # Priority 2: Try loading from store directory (ephemeral)
+    result = await async_load_index_and_meta()
+    if result.get("index_loaded") and result.get("meta_loaded"):
+        print(f"[startup] [OK] Loaded index from store/ with {result.get('index_size')} documents")
+        final_stats = {
+            "index_size": len(store_texts),
+            "emb_dim": EMB_DIM,
+            "loaded": faiss_index.ntotal,
+            "source": "store (ephemeral)"
+        }
+        print(f"[startup] Index status: {final_stats}")
+        if AUTOSAVE_SECONDS > 0:
+            _autosave_task = asyncio.create_task(_autosave_loop())
+        return
+
+    # Priority 3: Bootstrap from knowledge.json if enabled
+    if os.getenv("BOOTSTRAP_KNOWLEDGE", "1") == "1" and os.path.exists(KNOWLEDGE_JSON_PATH):
+        try:
+            print(f"[startup] No existing index found. Bootstrapping from {KNOWLEDGE_JSON_PATH}...")
+            with open(KNOWLEDGE_JSON_PATH, "r", encoding="utf-8") as f:
+                docs = json.load(f)
+            
+            chunks: List[str] = []
+            meta_doc_ids: List[str] = []
+            roles_list: List[List[str]] = []
+            titles_list: List[str] = []
+            intents_list: List[str] = []
+            keywords_list: List[List[str]] = []
+            
+            for d in docs:
+                content = d.get("content", "").strip()
+                if not content:
+                    continue
+                # Simple split if content very long (>1000 chars)
+                if len(content) > 1000:
+                    for part_idx in range(0, len(content), 800):
+                        part = content[part_idx: part_idx + 800]
+                        chunks.append(part)
+                        meta_doc_ids.append(d.get("docId", "unknown"))
+                        roles_list.append(d.get("role") or ["teacher", "technician", "admin"])
+                        titles_list.append(d.get("title", ""))
+                        intents_list.append(d.get("intent", ""))
+                        keywords_list.append(d.get("keywords") or [])
+                else:
+                    chunks.append(content)
+                    meta_doc_ids.append(d.get("docId", "unknown"))
+                    roles_list.append(d.get("role") or ["teacher", "technician", "admin"])
+                    titles_list.append(d.get("title", ""))
+                    intents_list.append(d.get("intent", ""))
+                    keywords_list.append(d.get("keywords") or [])
+            
+            if chunks:
+                print(f"[startup] Encoding {len(chunks)} chunks...")
+                embs = embedder.encode(chunks)
+                if embs.dtype != np.float32:
+                    embs = embs.astype(np.float32)
+                
+                async with index_lock:
+                    faiss_index.add(embs)
+                    store_doc_ids.extend(meta_doc_ids)
+                    store_texts.extend(chunks)
+                    store_roles.extend(roles_list)
+                    store_titles.extend(titles_list)
+                    store_intents.extend(intents_list)
+                    store_keywords.extend(keywords_list)
+                    
+                    # Save to both store/ and prebuilt/
+                    await async_save_index_and_meta()
+                
+                print(f"[startup] [OK] Bootstrapped {len(chunks)} chunks and saved to prebuilt/")
+                print(f"[startup] [!] IMPORTANT: Commit py-chatbot/prebuilt/ to Git for persistence!")
+        except Exception as e:
+            print(f"[startup] Knowledge bootstrap failed: {e}")
+
+    # Print final stats
+    final_stats = {
+        "index_size": len(store_texts),
+        "emb_dim": EMB_DIM,
+        "loaded": faiss_index.ntotal,
+        "source": "bootstrap" if len(store_texts) > 0 else "empty"
+    }
+    print(f"[startup] Index status: {final_stats}")
+    
+    # Start autosave loop
     if AUTOSAVE_SECONDS > 0:
         _autosave_task = asyncio.create_task(_autosave_loop())
 
 
 @app.on_event("shutdown")
 async def _shutdown_cleanup():
-    # Stop autosave task
     global _autosave_task
+    
+    print("[shutdown] Saving index before shutdown...")
+    
+    # Save index one last time
+    try:
+        await async_save_index_and_meta()
+        print("[shutdown] [OK] Index saved successfully")
+    except Exception as e:
+        print(f"[shutdown] Failed to save index: {e}")
+    
+    # Stop autosave task
     if _autosave_task is not None:
         _autosave_task.cancel()
         try:

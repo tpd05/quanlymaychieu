@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { comparePassword, hashPassword } from '@/lib/bcrypt';
+import { validateStrongPassword } from '@/lib/passwordPolicy';
 import { getCurrentUser } from '@/utils/auth';
 
 export async function POST(req: NextRequest) {
@@ -21,11 +22,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { message: 'Mật khẩu mới phải có ít nhất 6 ký tự' },
-        { status: 400 }
-      );
+    const policy = validateStrongPassword(newPassword);
+    if (!policy.ok) {
+      return NextResponse.json({ message: policy.message }, { status: 400 });
     }
 
     // Get user from database

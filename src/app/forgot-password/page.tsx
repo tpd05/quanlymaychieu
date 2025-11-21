@@ -275,7 +275,21 @@ export default function ForgotPasswordPage() {
                 name="newPassword"
                 rules={[
                   { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
-                  { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+                  {
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve();
+                      const lengthOk = value.length >= 8;
+                      const upperOk = /[A-Z]/.test(value);
+                      const lowerOk = /[a-z]/.test(value);
+                      const numberOk = /[0-9]/.test(value);
+                      const specialOk = /[^A-Za-z0-9]/.test(value);
+                      return lengthOk && upperOk && lowerOk && numberOk && specialOk
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error('Mật khẩu ≥8 ký tự, gồm chữ hoa, thường, số, ký tự đặc biệt')
+                          );
+                    },
+                  },
                 ]}
               >
                 <Input.Password 

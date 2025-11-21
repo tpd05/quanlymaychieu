@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Avatar, Upload, Spin, Tabs, App } from 'antd';
-import { UserOutlined, MailOutlined, IdcardOutlined, LockOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, Avatar, Upload, Spin, Tabs, App, Space, Alert } from 'antd';
+import { UserOutlined, MailOutlined, IdcardOutlined, LockOutlined, UploadOutlined, SaveOutlined, GoogleOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import styles from './profile.module.css';
+import { useSearchParams } from 'next/navigation';
 
 export default function ProfilePage() {
   const { message } = App.useApp();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [googleLinking, setGoogleLinking] = useState(false);
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
@@ -19,6 +22,15 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchUserProfile();
   }, []);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const googleEmail = searchParams?.get('google_email');
+    const googleId = searchParams?.get('google_id');
+    if (googleEmail && googleId) {
+      handleLinkGoogle(googleEmail, googleId);
+    }
+  }, [searchParams]);
 
   const fetchUserProfile = async () => {
     try {
@@ -30,13 +42,66 @@ export default function ProfilePage() {
         form.setFieldsValue({
           userID: data.user.userID,
           fullName: data.user.fullName,
-          email: data.user.email,
         });
       }
     } catch (error) {
       message.error('Không thể tải thông tin người dùng');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Initiate Google OAuth
+  const handleStartGoogleLink = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      message.error('Chưa cấu hình Google OAuth');
+      return;
+    }
+    const redirectUri = `${window.location.origin}/api/auth/google/callback`;
+    const scope = 'email profile';
+    const state = userInfo?.id || 'unknown';
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}`;
+    window.location.href = authUrl;
+  };
+
+  // Link Google account
+  const handleLinkGoogle = async (googleEmail: string, googleId: string) => {
+    setGoogleLinking(true);
+    try {
+      const res = await fetch('/api/user/link-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleEmail, googleId }),
+      });
+      if (res.ok) {
+        message.success('Liên kết Google thành công!');
+        await fetchUserProfile();
+        window.history.replaceState({}, '', '/profile');
+      } else {
+        const data = await res.json();
+        message.error(data.message || 'Liên kết thất bại');
+      }
+    } catch (error) {
+      message.error('Có lỗi xảy ra');
+    } finally {
+      setGoogleLinking(false);
+    }
+  };
+
+  // Unlink Google
+  const handleUnlinkGoogle = async () => {
+    try {
+      const res = await fetch('/api/user/link-google', { method: 'DELETE' });
+      if (res.ok) {
+        message.success('Hủy liên kết thành công!');
+        await fetchUserProfile();
+      } else {
+        const data = await res.json();
+        message.error(data.message);
+      }
+    } catch (error) {
+      message.error('Có lỗi xảy ra');
     }
   };
 
@@ -49,7 +114,6 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: values.fullName,
-          email: values.email,
           avatar: avatarUrl,
         }),
       });
@@ -156,7 +220,9 @@ export default function ProfilePage() {
               <MailOutlined className={styles.infoIcon} />
               <div>
                 <div className={styles.infoLabel}>Email</div>
-                <div className={styles.infoValue}>{userInfo?.email}</div>
+                <div className={styles.infoValue}>
+                  {userInfo?.googleEmail || userInfo?.email || 'Chưa liên kết'}
+                </div>
               </div>
             </div>
           </div>
@@ -203,15 +269,12 @@ export default function ProfilePage() {
 
                     <Form.Item
                       label="Email"
-                      name="email"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập email!' },
-                        { type: 'email', message: 'Email không hợp lệ!' }
-                      ]}
+                      help={userInfo?.googleEmail ? "Email từ Google đã liên kết" : "Chưa liên kết email"}
                     >
                       <Input 
+                        value={userInfo?.googleEmail || userInfo?.email || "Chưa có email"}
+                        disabled
                         prefix={<MailOutlined />}
-                        placeholder="Nhập email"
                         className={styles.input}
                       />
                     </Form.Item>
@@ -259,7 +322,21 @@ export default function ProfilePage() {
                       name="newPassword"
                       rules={[
                         { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
-                        { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+                        {
+                          validator: (_, value) => {
+                            if (!value) return Promise.resolve();
+                            const lengthOk = value.length >= 8;
+                            const upperOk = /[A-Z]/.test(value);
+                            const lowerOk = /[a-z]/.test(value);
+                            const numberOk = /[0-9]/.test(value);
+                            const specialOk = /[^A-Za-z0-9]/.test(value);
+                            return lengthOk && upperOk && lowerOk && numberOk && specialOk
+                              ? Promise.resolve()
+                              : Promise.reject(
+                                  new Error('Mật khẩu ≥8 ký tự, gồm chữ hoa, thường, số, ký tự đặc biệt')
+                                );
+                          },
+                        },
                       ]}
                     >
                       <Input.Password 
@@ -305,6 +382,53 @@ export default function ProfilePage() {
                       </Button>
                     </Form.Item>
                   </Form>
+                ),
+              },
+              {
+                key: '3',
+                label: 'Liên kết Google',
+                forceRender: true,
+                children: (
+                  <div className={styles.form}>
+                    <Alert
+                      message="Liên kết tài khoản Google"
+                      description="Liên kết với tài khoản Google để sử dụng email Google khi quên mật khẩu."
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 24 }}
+                    />
+                    {userInfo?.googleEmail ? (
+                      <div>
+                        <div style={{ marginBottom: 16 }}>
+                          <strong>Email Google đã liên kết:</strong>
+                          <div style={{ fontSize: 16, color: '#1890ff', marginTop: 8 }}>
+                            <MailOutlined /> {userInfo.googleEmail}
+                          </div>
+                        </div>
+                        <Button 
+                          danger 
+                          icon={<DisconnectOutlined />}
+                          onClick={handleUnlinkGoogle}
+                        >
+                          Hủy liên kết
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ marginBottom: 16 }}>
+                          Bạn chưa liên kết tài khoản Google. Liên kết ngay để dễ dàng khôi phục mật khẩu.
+                        </p>
+                        <Button 
+                          type="primary"
+                          icon={<GoogleOutlined />}
+                          onClick={handleStartGoogleLink}
+                          loading={googleLinking}
+                        >
+                          Liên kết với Google
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 ),
               },
             ]}

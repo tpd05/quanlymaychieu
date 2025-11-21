@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verificationCodes, generateVerificationCode } from '@/lib/verification';
+import { sendVerificationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -14,9 +15,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user exists with this email
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Check if user exists with this email (regular or Google email)
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          { googleEmail: email },
+        ],
+      },
     });
 
     if (!user) {
@@ -26,28 +32,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // Determine which email to send verification code to
+    // Priority: googleEmail (if linked) > regular email
+    const targetEmail = user.googleEmail || user.email;
+    
+    if (!targetEmail) {
+      return NextResponse.json(
+        { message: 'Tài khoản chưa có email. Vui lòng liên kết Google hoặc liên hệ admin.' },
+        { status: 400 }
+      );
+    }
+
     // Generate verification code
     const code = generateVerificationCode();
     const expires = Date.now() + 60000; // 1 minute
 
-    // Store code
+    // Store code with the input email as key (for verification later)
     verificationCodes.set(email, { code, expires });
 
-    // For development mode: return code directly (REMOVE IN PRODUCTION)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] Verification code for ${email}: ${code}`);
-      return NextResponse.json({
-        message: 'Mã xác thực đã được tạo (Development mode)',
-        email,
-        code, // Only for development testing
-      });
+    // Send email to target email (Google email or regular email)
+    try {
+      await sendVerificationEmail(targetEmail, code);
+    } catch (e) {
+      console.error('Email send failed:', e);
+      return NextResponse.json({ message: 'Không thể gửi email xác thực' }, { status: 500 });
     }
 
-    // TODO: In production, send email using nodemailer or email service
-    // For now, just return success
-    return NextResponse.json({
-      message: 'Mã xác thực đã được gửi đến email của bạn',
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] Verification code for ${email} sent to ${targetEmail}: ${code}`);
+    }
+
+    return NextResponse.json({ 
+      message: `Mã xác thực đã được gửi đến ${targetEmail}`, 
       email,
+      sentTo: targetEmail // Optional: inform user where code was sent
     });
   } catch (error) {
     console.error('Send code error:', error);
