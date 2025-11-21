@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Card, Form, Input, Button, Avatar, Upload, Spin, Tabs, App, Space, Alert } from 'antd';
 import { UserOutlined, MailOutlined, IdcardOutlined, LockOutlined, UploadOutlined, SaveOutlined, GoogleOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import styles from './profile.module.css';
 import { useSearchParams } from 'next/navigation';
 
-export default function ProfilePage() {
+function ProfileContent() {
   const { message } = App.useApp();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -436,5 +436,13 @@ export default function ProfilePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>}>
+      <ProfileContent />
+    </Suspense>
   );
 }
