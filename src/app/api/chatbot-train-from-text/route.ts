@@ -74,9 +74,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Save to local store
     await fetch(`${baseUrl}/index/save`, { method: 'POST' }).catch(() => undefined);
+    
+    // Save to MongoDB for persistence
+    const mongoSaveRes = await fetch(`${baseUrl}/index/save-to-mongodb`, { method: 'POST' }).catch(() => null);
+    const mongoResult = mongoSaveRes ? await mongoSaveRes.json() : null;
+    console.log('[train] MongoDB save result:', mongoResult);
 
-    return NextResponse.json({ ok: true, docs: items.length, totalChunks });
+    return NextResponse.json({ 
+      ok: true, 
+      docs: items.length, 
+      totalChunks,
+      mongoSaved: mongoResult?.success || false,
+      mongoVersion: mongoResult?.version
+    });
   } catch (e: any) {
     return NextResponse.json({ error: 'Train failed', detail: String(e?.message || e) }, { status: 500 });
   }

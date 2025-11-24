@@ -7,3 +7,5 @@ Pillow==10.4.0
 tokenizers==0.20.1
 torch==2.4.1
 numpy==1.26.4
+pymongo==4.6.0
+requests==2.31.0

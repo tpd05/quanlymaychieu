@@ -584,6 +584,48 @@ async def index_save():
         return res
 
 
+@app.post("/index/save-to-mongodb")
+async def index_save_to_mongodb():
+    """Save current index to MongoDB for persistence"""
+    try:
+        from app.mongodb_helper import save_index_to_mongodb
+        from datetime import datetime
+        
+        # Read current index binary
+        if not os.path.exists(INDEX_PATH):
+            return {"error": "No index file found", "success": False}
+        
+        with open(INDEX_PATH, 'rb') as f:
+            index_binary = f.read()
+        
+        # Prepare metadata
+        metadata = {
+            "doc_ids": store_doc_ids,
+            "texts": store_texts,
+            "roles": store_roles,
+            "titles": store_titles,
+            "intents": store_intents,
+            "keywords": store_keywords,
+            "emb_dim": EMB_DIM,
+        }
+        
+        # Generate version tag
+        version = f"train-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        
+        # Save to MongoDB
+        success = save_index_to_mongodb(index_binary, metadata, version)
+        
+        return {
+            "success": success,
+            "version": version,
+            "index_size": len(store_texts),
+            "message": "Index saved to MongoDB" if success else "Failed to save to MongoDB"
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
+
 @app.post("/index/load")
 async def index_load():
     async with index_lock:
@@ -663,6 +705,41 @@ async def _startup_load_index():
     global _autosave_task
     
     print("[startup] Initializing QLMC Chatbot Service...")
+    
+    # Priority 0: Try loading from MongoDB (fastest, always up-to-date)
+    try:
+        from app.mongodb_helper import load_index_from_mongodb, decode_index_from_base64
+        mongo_data = load_index_from_mongodb()
+        if mongo_data:
+            print(f"[startup] Loading index from MongoDB (version: {mongo_data.get('version')})")
+            # Decode base64 index
+            index_binary = decode_index_from_base64(mongo_data['indexData'])
+            metadata = mongo_data['metadata']
+            
+            # Write to store directory
+            _ensure_data_dir()
+            with open(INDEX_PATH, 'wb') as f:
+                f.write(index_binary)
+            with open(META_PATH, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f)
+            
+            # Load into memory
+            result = await async_load_index_and_meta()
+            if result.get("index_loaded") and result.get("meta_loaded"):
+                print(f"[startup] [OK] Loaded {result.get('index_size')} documents from MongoDB")
+                final_stats = {
+                    "index_size": len(store_texts),
+                    "emb_dim": EMB_DIM,
+                    "loaded": faiss_index.ntotal,
+                    "source": "mongodb",
+                    "version": mongo_data.get('version')
+                }
+                print(f"[startup] Index status: {final_stats}")
+                if AUTOSAVE_SECONDS > 0:
+                    _autosave_task = asyncio.create_task(_autosave_loop())
+                return
+    except Exception as e:
+        print(f"[startup] MongoDB load failed (falling back to prebuilt): {e}")
     
     # Priority 1: Load from prebuilt directory (committed to Git)
     # This ensures persistence across Render restarts
