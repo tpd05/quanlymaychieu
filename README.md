@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Prisma](https://img.shields.io/badge/Prisma-5.22.0-2D3748?style=for-the-badge&logo=prisma)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python)
+![Python](https://img.shields.io/badge/Python-3.11.10-3776AB?style=for-the-badge&logo=python)
 ![Ant Design](https://img.shields.io/badge/Ant_Design-5.27.5-0170FE?style=for-the-badge&logo=ant-design)
 
 **Hệ thống quản lý máy chiếu thông minh với AI Assistant**
@@ -114,23 +114,28 @@
 - **Ant Design 5.27.5** - UI components
 - **Recharts 3.3.0** - Data visualization
 - **Day.js 1.11.18** - Date manipulation
+- **SWR 2.3.6** - Data fetching & caching
+- **Zod 3.23.8** - Schema validation
 
-### Backend
+### Backend (Next.js)
 - **Next.js API Routes** - RESTful API
 - **Prisma 5.22.0** - ORM với MongoDB
-- **MongoDB Atlas** - Cloud NoSQL Database
+- **MongoDB 5.5** - Database driver
 - **JWT (jsonwebtoken 9.0.2)** - Authentication
 - **Bcrypt.js 2.4.3** - Password hashing
 - **Nodemailer 6.9.13** - Email verification
 - **Google OAuth 2.0** - Social login
 
-### AI Backend (Python)
-- **FastAPI** - Python web framework
-- **FAISS** - Vector search engine
-- **Sentence Transformers** - Embedding models (384-dim)
+### AI Backend (Python 3.11.10)
+- **FastAPI 0.115.0** - Python web framework
+- **Uvicorn 0.30.6** - ASGI server
+- **FAISS-CPU 1.12.0** - Vector search engine
+- **Transformers 4.46.1** - Hugging Face models (384-dim embeddings)
 - **Google Generative AI** - LLM (Gemini)
 - **PyMongo 4.6.0** - MongoDB driver cho persistence
-- **Torch** - Deep learning framework
+- **PyTorch 2.4.1** - Deep learning framework
+- **Pydantic 2.9.2** - Data validation
+- **NumPy 1.26.4** - Numerical computing
 
 ### DevOps & Deployment
 - **Vercel** - Frontend hosting với Cron Jobs
@@ -145,36 +150,50 @@
 
 ### Bắt buộc
 - **Node.js** >= 18.0.0
-- **npm** hoặc **yarn**
+- **npm** >= 9.0.0 hoặc **yarn** >= 1.22.0
 - **MongoDB Atlas Account** (miễn phí tại mongodb.com/cloud/atlas)
-- **Python** >= 3.9 (cho AI backend)
-- **Google API Key** (miễn phí tại ai.google.dev)
+- **Python** 3.9 - 3.11 (khuyến nghị: 3.11.10)
+- **Google Gemini API Key** (miễn phí tại ai.google.dev)
 
 ### Khuyến nghị
-- **RAM**: >= 8GB
+- **RAM**: >= 8GB (16GB cho AI training)
 - **Disk**: >= 10GB free space
-- **OS**: Windows 10/11, macOS, Linux
+- **OS**: Windows 10/11, macOS 10.15+, Linux (Ubuntu 20.04+)
+- **GPU**: Optional (CUDA-compatible cho faster AI inference)
 
 ---
 
 ## Cài đặt
 
-### 1. Clone Repository
+### Bước 1: Clone Repository từ GitHub
 
 ```bash
-git clone https://github.com/yourusername/qlmc.git
+# Clone project về máy
+git clone https://github.com/tpd0905/qlmc.git
+
+# Di chuyển vào thư mục project
 cd qlmc
 ```
 
-### 2. Cài đặt Dependencies (Frontend)
+---
+
+### Bước 2: Cài đặt Dependencies Frontend (Next.js)
 
 ```bash
+# Cài đặt tất cả dependencies Node.js
 npm install
+
+# Hoặc nếu dùng yarn:
+# yarn install
 ```
 
-### 3. Cấu hình Database
+> **Lưu ý**: Quá trình này có thể mất 3-5 phút tùy tốc độ mạng
 
-#### a. Tạo MongoDB Atlas Cluster (Miễn phí)
+---
+
+### Bước 3: Cấu hình Database
+
+#### 3.1. Tạo MongoDB Atlas Cluster (Miễn phí)
 
 1. Đăng ký tại https://www.mongodb.com/cloud/atlas
 2. Tạo Cluster miễn phí (M0 Sandbox)
@@ -182,9 +201,19 @@ npm install
 4. Tạo Database User với username/password
 5. Copy Connection String
 
-#### b. Cấu hình `.env`
+#### 3.2. Cấu hình `.env` cho Next.js
 
-Tạo file `.env` trong thư mục gốc:
+**Tạo file `.env` trong thư mục gốc project:**
+
+```bash
+# Windows (PowerShell):
+New-Item .env -ItemType File
+
+# macOS/Linux:
+touch .env
+```
+
+**Mở file `.env` và dán nội dung sau:**
 
 ```env
 # MongoDB Atlas Connection
@@ -213,15 +242,34 @@ PY_CHATBOT_URL="http://127.0.0.1:8001"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-#### c. Cấu hình Python Backend `.env`
+> **⚠️ QUAN TRỌNG**: 
+> - Thay `<username>`, `<password>`, `cluster0.xxxxx` bằng thông tin MongoDB của bạn
+> - Đổi `JWT_SECRET` và `CRON_SECRET` thành chuỗi bí mật mạnh
+> - Email config là **tùy chọn** (nếu không cần reset password qua email)
 
-Tạo file `py-chatbot/.env`:
+#### 3.3. Cấu hình Python Backend `.env`
+
+**Tạo file `py-chatbot/.env`:**
+
+```bash
+# Windows (PowerShell):
+cd py-chatbot; New-Item .env -ItemType File; cd ..
+
+# macOS/Linux:
+touch py-chatbot/.env
+```
+
+**Mở file `py-chatbot/.env` và dán nội dung sau:**
 
 ```env
-# Google Gemini API Key (miễn phí tại ai.google.dev)
+# Google Gemini API Key (MIỄN PHÍ tại ai.google.dev)
+# Hướng dẫn lấy API key:
+# 1. Truy cập https://ai.google.dev/
+# 2. Click "Get API key" → "Create API key"
+# 3. Copy key và paste vào đây
 GOOGLE_API_KEY="your-gemini-api-key-here"
 
-# MongoDB Connection (dùng chung với Next.js)
+# MongoDB Connection (dùng CHUNG với Next.js - copy từ .env chính)
 MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/qlmc?retryWrites=true&w=majority"
 MONGODB_DB_NAME="qlmc"
 
@@ -229,83 +277,210 @@ MONGODB_DB_NAME="qlmc"
 NEXTJS_API_URL="http://localhost:3000"
 ```
 
-### 4. Setup Database Schema
+> **⚠️ QUAN TRỌNG**: 
+> - GOOGLE_API_KEY là BẮT BUỘC để chatbot hoạt động
+> - MONGODB_URI phải GIỐNG CHÍNH XÁC với DATABASE_URL trong `.env` chính
+
+---
+
+### Bước 4: Setup Database Schema
+
+**Quay về thư mục gốc project:**
 
 ```bash
-# Generate Prisma Client
+# Nếu đang ở trong thư mục khác
+cd d:\file\project\qlmc
+# hoặc macOS/Linux:
+# cd ~/qlmc
+```
+
+**Chạy các lệnh sau theo thứ tự:**
+
+```bash
+# 1. Generate Prisma Client (tạo TypeScript types)
 npx prisma generate
 
-# Push schema to MongoDB (không cần migrations với MongoDB)
+# 2. Push schema to MongoDB (tạo collections)
 npx prisma db push
 
-# Seed database với dữ liệu mẫu
+# 3. Seed database với dữ liệu mẫu (users, projectors, etc.)
 npm run seed
 ```
 
-**Lưu ý:** MongoDB không dùng migrations như SQL. Prisma sẽ tự động sync schema.
+**Output mong đợi:**
+- ✅ Prisma Client generated successfully
+- ✅ Database synchronized
+- ✅ Seeded: 3 users, 5 projectors, 3 bookings, etc.
 
-### 5. Cài đặt Python AI Backend
+> **💡 Lưu ý**: MongoDB không dùng migrations như SQL. Prisma sẽ tự động sync schema.
+
+---
+
+### Bước 5: Cài đặt Python AI Backend
+
+#### 5.1. Tạo Virtual Environment
 
 ```bash
+# Di chuyển vào thư mục Python backend
 cd py-chatbot
 
 # Tạo virtual environment
 python -m venv .venv
+```
 
-# Kích hoạt virtual environment
-# Windows:
-.venv\Scripts\activate
+#### 5.2. Kích hoạt Virtual Environment
+
+```bash
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+
+# Windows (CMD):
+.venv\Scripts\activate.bat
+
 # macOS/Linux:
 source .venv/bin/activate
+```
 
-# Cài đặt dependencies
+**Kiểm tra virtual environment đã active:**
+- Windows: Prompt sẽ hiện `(.venv)` ở đầu dòng
+- macOS/Linux: Terminal sẽ hiện `(.venv)` ở đầu dòng
+
+#### 5.3. Cài đặt Python Dependencies
+
+```bash
+# Upgrade pip trước (khuyến nghị)
+pip install --upgrade pip
+
+# Cài đặt tất cả dependencies
 pip install -r requirements.txt
 ```
 
-#### Train AI với Knowledge Base
+**Packages sẽ được cài (từ requirements.txt):**
+- FastAPI 0.115.0 - Web framework
+- Uvicorn 0.30.6 - ASGI server
+- Transformers 4.46.1 - Hugging Face models
+- FAISS-CPU 1.12.0 - Vector search
+- PyTorch 2.4.1 - Deep learning (CPU version)
+- PyMongo 4.6.0 - MongoDB driver
+- Pydantic 2.9.2 - Data validation
+- NumPy 1.26.4 - Numerical computing
+
+> **⏱️ Thời gian**: Quá trình này mất 5-10 phút, đặc biệt PyTorch (~800MB)
+
+#### 5.4. Train AI với Knowledge Base
 
 ```bash
-cd py-chatbot
-.venv\Scripts\activate  # Windows
-# hoặc: source .venv/bin/activate  # macOS/Linux
+# Đảm bảo đang trong thư mục py-chatbot và venv đã active
+# Quay về thư mục gốc để import app.main
+cd ..
 
 # Train AI lần đầu (tạo FAISS index)
-python -c "import app.main; print('Training complete!')"
+python -c "import sys; sys.path.insert(0, 'py-chatbot'); import app.main; print('✅ Training complete!')"
 ```
 
-> FAISS index sẽ được lưu vào MongoDB tự động
+**Output mong đợi:**
+```
+Loading sentence transformer model...
+Building FAISS index from knowledge base...
+Index built with X documents
+Saving FAISS index to MongoDB...
+✅ Training complete!
+```
 
-### 6. Khởi động Development Server
+> **💾 Lưu trữ**: FAISS index sẽ được lưu vào MongoDB collection `FAISSIndex` tự động
 
-#### Option 1: Tự động (Khuyến nghị)
+---
+
+### Bước 6: Khởi động Development Server
+
+#### Option 1: Tự động - Concurrently (Khuyến nghị) ⭐
+
+**Quay về thư mục gốc project:**
+
+```bash
+# Từ thư mục py-chatbot
+cd ..
+
+# Hoặc từ bất kỳ đâu:
+cd d:\file\project\qlmc  # Windows
+# cd ~/qlmc  # macOS/Linux
+```
+
+**Chạy lệnh:**
 
 ```bash
 npm run dev
 ```
 
-Lệnh này sẽ tự động chạy:
-- Next.js dev server (port 3000)
-- Python FastAPI server (port 8001)
+**Lệnh này sẽ tự động khởi động đồng thời:**
+- 🌐 Next.js dev server (port 3000) - màu xanh dương
+- 🤖 Python FastAPI server (port 8001) - màu magenta
 
-#### Option 2: Thủ công
-
-**Terminal 1 - Frontend:**
-```bash
-npm run dev
+**Output mong đợi:**
+```
+[web] ▲ Next.js 15.5.6
+[web] - Local: http://localhost:3000
+[ai] INFO: Uvicorn running on http://127.0.0.1:8001
+[ai] INFO: Application startup complete
 ```
 
-**Terminal 2 - Python Backend:**
+#### Option 2: Thủ công - 2 Terminals riêng biệt
+
+**Terminal 1 - Next.js Frontend:**
+```bash
+npm run dev:next
+# hoặc: next dev
+```
+
+**Terminal 2 - Python AI Backend:**
 ```bash
 cd py-chatbot
-.venv\Scripts\activate  # Windows
+
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+# macOS/Linux:
+source .venv/bin/activate
+
+# Chạy server
 python -m uvicorn app.main:app --reload --port 8001
 ```
 
-### 7. Truy cập ứng dụng
+---
 
-Mở trình duyệt và truy cập:
-- **Frontend**: http://localhost:3000
-- **Python API Docs**: http://127.0.0.1:8001/docs
+### Bước 7: Truy cập và Kiểm tra Ứng dụng
+
+#### 7.1. Mở trình duyệt và truy cập:
+
+- **🏠 Frontend Application**: http://localhost:3000
+- **📚 Python API Docs (Swagger)**: http://127.0.0.1:8001/docs
+- **🔄 Python API Redoc**: http://127.0.0.1:8001/redoc
+
+#### 7.2. Test kết nối:
+
+**Kiểm tra Next.js API:**
+```bash
+curl http://localhost:3000/api/auth/check
+```
+
+**Kiểm tra Python Backend:**
+```bash
+curl http://127.0.0.1:8001/health
+# hoặc
+curl http://127.0.0.1:8001/
+```
+
+#### 7.3. Đăng nhập lần đầu:
+
+1. Truy cập http://localhost:3000/login
+2. Sử dụng tài khoản mặc định (xem mục [Tài khoản mặc định](#-tài-khoản-mặc-định)):
+   ```
+   Email: admin@example.com
+   Password: ab1234@
+   ```
+3. Explore dashboard và test ChatWidget ở góc dưới bên phải! 🤖
+
+> **🎉 Chúc mừng!** Bạn đã setup thành công hệ thống QLMC!
 
 ---
 
@@ -467,7 +642,7 @@ Sau khi chạy `npm run seed`:
 ```
 Email: admin@example.com
 Password: ab1234@
-UserID: admin
+UserID: QNU2579128
 ```
 
 ### Teacher
@@ -601,14 +776,14 @@ NEXTJS_API_URL="https://your-app.vercel.app"
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         USER                                 │
-│            (Browser: Chrome, Edge, Safari)                   │
+│                         USER                                │
+│            (Browser: Chrome, Edge, Safari)                  │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    NEXT.JS FRONTEND                          │
-│                  (Vercel Deployment)                         │
+│                    NEXT.JS FRONTEND                         │
+│                  (Vercel Deployment)                        │
 │  - React 19 + TypeScript                                    │
 │  - Ant Design UI Components                                 │
 │  - ChatWidget (Real-time feedback)                          │
@@ -629,14 +804,14 @@ NEXTJS_API_URL="https://your-app.vercel.app"
         │                      │
         ↓                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   MONGODB ATLAS                              │
-│              (Cloud NoSQL Database)                          │
-│                                                              │
-│ Collections:                                                 │
+│                   MONGODB ATLAS                             │
+│              (Cloud NoSQL Database)                         │
+│                                                             │
+│ Collections:                                                │
 │ • User, Projector, Booking, Review                          │
 │ • SupportRequest, Activity                                  │
-│ • ChatbotFeedback, AILearningLog                           │
-│ • FAISSIndex (Binary storage)                              │
+│ • ChatbotFeedback, AILearningLog                            │
+│ • FAISSIndex (Binary storage)                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
