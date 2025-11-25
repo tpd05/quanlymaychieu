@@ -100,8 +100,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`📈 [Daily AI Learning] Calculated scores for ${Object.keys(documentScores).length} documents`);
 
-    // 3. Đồng bộ scores lên Python backend
+    // 3. Wake up Render server and sync scores
     const pythonBackendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://127.0.0.1:8001';
+    
+    console.log('🚀 [Daily AI Learning] Waking up Render server...');
+    
+    // Import wake-up utility
+    const { wakeUpRenderServer } = await import('@/lib/render-utils');
+    const serverAwake = await wakeUpRenderServer(pythonBackendUrl, 6, 15000); // 6 retries, 15s delay
+    
+    if (!serverAwake) {
+      console.error('❌ [Daily AI Learning] Failed to wake up Render server');
+      return NextResponse.json(
+        { 
+          error: 'Failed to wake up Render server for learning',
+          message: 'Render server could not be woken up. Please try again later.',
+        },
+        { status: 503 }
+      );
+    }
+
+    console.log('✅ [Daily AI Learning] Render server is awake, syncing scores...');
+
+    // 4. Đồng bộ scores lên Python backend
     let updatedCount = 0;
 
     for (const [docId, data] of Object.entries(documentScores)) {
@@ -112,9 +133,10 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            doc_id: docId,
-            feedback_score: avgScore,
+            docId: docId, // Fixed: should be docId not doc_id
+            feedbackScore: avgScore,
           }),
+          signal: AbortSignal.timeout(10000), // 10s timeout per update
         });
 
         if (response.ok) {
@@ -129,7 +151,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [Daily AI Learning] Updated ${updatedCount}/${Object.keys(documentScores).length} documents`);
 
-    // 4. Phân tích top questions
+    // 5. Save updated index to MongoDB after learning
+    console.log('💾 [Daily AI Learning] Saving updated index to MongoDB...');
+    try {
+      const saveResponse = await fetch(`${pythonBackendUrl}/index/save-to-mongodb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(60000), // 60s timeout for save
+      });
+      
+      if (saveResponse.ok) {
+        const saveData = await saveResponse.json();
+        console.log('✅ [Daily AI Learning] Index saved to MongoDB:', saveData);
+      } else {
+        console.warn('⚠️ [Daily AI Learning] Failed to save to MongoDB:', await saveResponse.text());
+      }
+    } catch (e) {
+      console.error('❌ [Daily AI Learning] Error saving to MongoDB:', e);
+    }
+
+    // 6. Phân tích top questions
     const questionStats: Record<string, { count: number; likeCount: number; dislikeCount: number }> = {};
     
     for (const feedback of feedbackData) {
@@ -154,7 +195,7 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // 5. Tạo learning log
+    // 7. Tạo learning log
     const learningLog: LearningLogEntry = {
       timestamp: new Date().toISOString(),
       totalFeedback: feedbackData.length,
@@ -169,7 +210,7 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    // 6. Lưu log vào database
+    // 8. Lưu log vào database
     console.log('📝 [Daily AI Learning] Learning Summary:', learningLog);
 
     await prisma.aILearningLog.create({

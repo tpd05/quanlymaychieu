@@ -38,6 +38,26 @@ export function loadFAISSMetadata(): FAISSMetadata | null {
 
     const metaContent = fs.readFileSync(metaPath, 'utf-8');
     const metadata = JSON.parse(metaContent) as FAISSMetadata;
+
+    // Normalize metadata arrays to prevent undefined indexes
+    const count = metadata.texts?.length || 0;
+    if (!Array.isArray(metadata.docIds) || metadata.docIds.length !== count) {
+      metadata.docIds = Array.from({ length: count }, (_, idx) => {
+        return metadata.docIds?.[idx] ?? `doc_${idx}`;
+      });
+    }
+    if (!Array.isArray(metadata.roles) || metadata.roles.length !== count) {
+      metadata.roles = Array.from({ length: count }, () => ['teacher', 'admin', 'technician']);
+    }
+    if (!Array.isArray(metadata.titles) || metadata.titles.length !== count) {
+      metadata.titles = Array.from({ length: count }, (_, idx) => metadata.titles?.[idx] ?? '');
+    }
+    if (!Array.isArray(metadata.intents) || metadata.intents.length !== count) {
+      metadata.intents = Array.from({ length: count }, (_, idx) => metadata.intents?.[idx] ?? '');
+    }
+    if (!Array.isArray(metadata.keywords) || metadata.keywords.length !== count) {
+      metadata.keywords = Array.from({ length: count }, (_, idx) => metadata.keywords?.[idx] ?? []);
+    }
     
     console.log(`[FAISS] Loaded metadata: ${metadata.texts?.length || 0} documents`);
     return metadata;
@@ -111,11 +131,21 @@ export function keywordSearch(
   // Sort by score and return top K
   results.sort((a, b) => b.score - a.score);
   
-  return results.slice(0, topK).map(r => ({
-    docId: metadata.docIds[r.index],
-    text: metadata.texts[r.index],
-    score: r.score,
-  }));
+  return results
+    .slice(0, topK)
+    .map((r) => {
+      const docId = metadata.docIds?.[r.index];
+      const text = metadata.texts?.[r.index];
+      if (!docId || !text) {
+        return null;
+      }
+      return {
+        docId,
+        text,
+        score: r.score,
+      };
+    })
+    .filter((item): item is SearchResult => Boolean(item));
 }
 
 /**

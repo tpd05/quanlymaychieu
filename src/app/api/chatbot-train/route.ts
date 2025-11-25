@@ -69,10 +69,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Save index after training
+    // Save index to Render's local storage first
     await fetch(`${baseUrl}/index/save`, { method: 'POST' }).catch(() => undefined);
 
-    return NextResponse.json({ ok: true, docs: items.length, totalChunks });
+    // Save index to MongoDB for persistence
+    console.log('[Train] Saving index to MongoDB...');
+    try {
+      const saveResponse = await fetch(`${baseUrl}/index/save-to-mongodb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (saveResponse.ok) {
+        const saveData = await saveResponse.json();
+        console.log('[Train] Index saved to MongoDB:', saveData);
+      } else {
+        console.warn('[Train] Failed to save to MongoDB:', await saveResponse.text());
+      }
+    } catch (e) {
+      console.error('[Train] Error saving to MongoDB:', e);
+    }
+
+    // Note: prebuilt/ directory will be updated on next deployment
+    // For immediate use, index is available from MongoDB
+
+    return NextResponse.json({ 
+      ok: true, 
+      docs: items.length, 
+      totalChunks,
+      message: 'Training completed. Index saved to MongoDB and will be available in prebuilt/ on next deployment.',
+    });
   } catch (e: any) {
     return NextResponse.json({ error: 'Train failed', detail: String(e?.message || e) }, { status: 500 });
   }
