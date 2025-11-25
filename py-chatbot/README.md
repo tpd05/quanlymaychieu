@@ -1,275 +1,394 @@
 # QLMC Python AI Backend
 
-🤖 Backend AI cho hệ thống Quản Lý Máy Chiếu (QLMC) sử dụng FastAPI, PyTorch, FAISS và Transformers.
+🤖 FastAPI backend cho QLMC với FAISS vector search, Google Gemini LLM, và MongoDB persistence.
 
-## 🌟 Features
+## 🌟 Tính Năng
 
-- **RAG (Retrieval-Augmented Generation)**: Trả lời câu hỏi dựa trên knowledge base
-- **Vector Search**: FAISS với multilingual embedding model
-- **Extractive QA**: XLM-RoBERTa cho câu trả lời chính xác
-- **Feedback Learning**: Cải thiện ranking dựa trên user feedback
-- **Persistent Storage**: Auto-save FAISS index và metadata
-- **CORS Support**: Tích hợp với Next.js frontend
+- ✅ **FAISS Vector Search** - Semantic search với 384-dim embeddings
+- ✅ **Google Gemini Integration** - Advanced LLM cho RAG
+- ✅ **MongoDB Persistence** - FAISS index được lưu trữ lâu dài
+- ✅ **Feedback Learning** - Exponential Moving Average algorithm
+- ✅ **Real-time + Batch Learning** - Cập nhật điểm ngay lập tức + daily analysis
+- ✅ **Auto-save** - Tự động lưu index sau khi train
+- ✅ **Startup Priority Loading** - MongoDB → prebuilt → store → bootstrap
 
 ## 🚀 Tech Stack
 
-- **FastAPI** 0.115.0 - Web framework
-- **PyTorch** 2.4.1 - Deep learning
-- **Transformers** 4.46.1 - NLP models
-- **FAISS** 1.12.0 - Vector similarity search
+- **FastAPI** 0.115.0 - Modern Python web framework
+- **FAISS** 1.12.0 - Facebook AI Similarity Search
+- **Sentence Transformers** 4.46.1 - paraphrase-multilingual-MiniLM-L12-v2 (384-dim)
+- **Google Generative AI** 0.8.3 - Gemini Pro model
+- **PyMongo** 4.6.0 - MongoDB driver
+- **PyTorch** 2.4.1 - Deep learning framework
 - **Uvicorn** 0.30.6 - ASGI server
 
-## 📦 Local Setup
+## 📦 Installation
 
-### Prerequisites
-- Python 3.11+
-- pip
+### 1. Create Virtual Environment
 
-### Installation
-
-```powershell
-# Create virtual environment
+```bash
 python -m venv .venv
 
-# Activate (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
+# Activate
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# Windows CMD:
+.venv\Scripts\activate.bat
+# macOS/Linux:
+source .venv/bin/activate
+```
 
-# Activate (Linux/Mac)
-# source .venv/bin/activate
+### 2. Install Dependencies
 
-# Install dependencies
+```bash
 pip install -r requirements.txt
-
-# Run server
-uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-### Test
+### 3. Environment Variables
 
-```powershell
-curl http://127.0.0.1:8001/health
+Create `.env` file:
+
+```env
+# Google Gemini API Key (free at ai.google.dev)
+GOOGLE_API_KEY=your_api_key_here
+
+# MongoDB Connection (same as Next.js)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/qlmc?retryWrites=true&w=majority
+MONGODB_DB_NAME=qlmc
+
+# Next.js API URL (for FAISS index persistence)
+NEXTJS_API_URL=http://localhost:3000
 ```
 
-## ☁️ Deploy to Render
+**Get Free API Keys:**
+- Google Gemini: https://ai.google.dev/
+- MongoDB Atlas: https://www.mongodb.com/cloud/atlas
 
-Xem hướng dẫn chi tiết tại: **[RENDER_DEPLOY.md](./RENDER_DEPLOY.md)**
+### 4. Run Server
 
-### Quick Start
+```bash
+# Development with auto-reload
+python -m uvicorn app.main:app --reload --port 8001
 
-1. Push code lên GitHub (repository riêng)
-2. Tạo Web Service trên Render
-3. Connect repository
-4. Cấu hình Environment Variables:
-   - `CHATBOT_DATA_DIR=/opt/render/project/src/store`
-   - `FRONTEND_URL=https://qlmc.vercel.app`
-5. Deploy!
+# Production
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+**API Documentation:** http://127.0.0.1:8001/docs
 
 ## 📚 API Endpoints
 
-### Health Check
-```
-GET /health
-```
+### Search & RAG
 
-### RAG Answer
-```
-POST /rag/answer
+#### `POST /search`
+Vector search với FAISS
+```json
 {
-  "question": "Máy chiếu bị mờ hình phải làm sao?",
-  "top_k": 5
-}
-```
-
-### Vector Search
-```
-POST /search
-{
-  "query": "bảo trì máy chiếu",
+  "query": "Cách đặt máy chiếu",
   "top_k": 5,
   "role": "teacher"
 }
 ```
 
-### Embed Documents
-```
-POST /embed
+#### `POST /rag/answer`
+RAG với Gemini (Q&A)
+```json
 {
-  "docId": "doc-001",
-  "chunks": ["Nội dung chunk 1", "Nội dung chunk 2"],
-  "rolesAllowed": ["teacher", "admin"],
-  "title": "Hướng dẫn bảo trì",
-  "intent": "maintenance",
-  "keywords": ["bảo trì", "vệ sinh"]
+  "question": "Máy chiếu bị lỗi phải làm sao?",
+  "top_k": 3
 }
 ```
 
-### Index Stats
-```
-GET /index/stats
+#### `POST /embed`
+Embed và index documents mới
+```json
+{
+  "docId": "doc_new_001",
+  "chunks": ["Text chunk 1", "Text chunk 2"],
+  "title": "New Document",
+  "rolesAllowed": ["teacher", "admin"]
+}
 ```
 
-### Save/Load Index
+### Index Management
+
+#### `GET /index/stats`
+Thống kê FAISS index
+```json
+{
+  "total_vectors": 245,
+  "dimension": 384,
+  "doc_count": 42
+}
 ```
-POST /index/save
-POST /index/load
-```
+
+#### `POST /index/load`
+Load index từ file
+
+#### `POST /index/save`
+Save index to store/ và prebuilt/
+
+#### `POST /index/save-to-mongodb`
+Save FAISS index to MongoDB
+
+#### `POST /index/retrain`
+Retrain FAISS index từ knowledge base
 
 ### Feedback Learning
-```
-POST /feedback/update
+
+#### `POST /feedback/update`
+Update document feedback score (EMA algorithm)
+```json
 {
-  "docId": "doc-001",
-  "feedbackScore": 1.0  // Positive for like, negative for dislike
+  "docId": "doc_001",
+  "feedbackScore": 1.0  // Like=1.0, Dislike=-0.5
 }
 ```
 
-## 🧪 API Documentation
-
-Swagger UI: `http://localhost:8001/docs`
-
-## 📁 Project Structure
-
-```
-py-chatbot/
-├── app/
-│   └── main.py           # FastAPI application
-├── build_static_index.py # Offline build of FAISS index (commit output in prebuilt/)
-├── prebuilt/             # OPTIONAL committed index (faiss.index, meta.json)
-├── store/                # FAISS index và metadata (gitignored)
-│   ├── faiss.index
-│   └── meta.json
-├── requirements.txt      # Python dependencies
-├── Procfile              # Render start command
-├── runtime.txt           # Python version for Render
-├── .python-version       # Python version
-├── .gitignore
-├── README.md
-└── RENDER_DEPLOY.md      # Deploy guide
+#### `GET /feedback/scores`
+Get all document feedback scores
+```json
+{
+  "scores": {
+    "doc_001": 0.75,
+    "doc_002": -0.3
+  },
+  "count": 2
+}
 ```
 
-## 🔧 Environment Variables
+### Health Check
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model |
-| `QA_MODEL_NAME` | `deepset/xlm-roberta-base-squad2` | QA model |
-| `CHATBOT_DATA_DIR` | `./store` | Path to FAISS index |
-| `PREBUILT_INDEX_DIR` | `./prebuilt` | Directory containing committed prebuilt index |
-| `BOOTSTRAP_KNOWLEDGE` | `0` | If `1`, auto-embed knowledge.vi.json on startup when empty |
-| `KNOWLEDGE_JSON_PATH` | `../data/knowledge.vi.json` | Knowledge base file for bootstrap/build |
-| `FRONTEND_URL` | - | Frontend URL for CORS |
-| `AUTOSAVE_SECONDS` | `300` | Auto-save interval (0 to disable) |
-| `QA_TOP_CONTEXTS` | `3` | Number of contexts for QA |
+#### `GET /`
+API status và version
+
+#### `GET /health`
+Health check endpoint
+
+## 🗄️ FAISS Index Persistence
+
+### Priority Loading Strategy (Startup)
+
+```
+Priority 0: MongoDB (fastest, cloud-based, production)
+     ↓ not found or error
+Priority 1: prebuilt/faiss.index (Git-committed, reliable fallback)
+     ↓ not found
+Priority 2: store/faiss.index (local training, development)
+     ↓ not found
+Priority 3: Bootstrap (train từ knowledge base, first-time setup)
+```
+
+### Save Strategy (After Training)
+
+Sau khi train hoặc update, index được save tới:
+1. **MongoDB** (Priority 0) - Cloud persistence, fast startup
+2. **store/** (Priority 2) - Local backup
+3. **prebuilt/** (Priority 1) - Git-committed fallback
+
+**Lợi ích:**
+- ✅ **MongoDB**: Không mất khi Render restart (free tier có ephemeral filesystem)
+- ✅ **prebuilt/**: Fallback khi MongoDB down
+- ✅ **store/**: Local development
+
+## 🧠 Feedback Learning Algorithm
+
+### Exponential Moving Average (EMA)
+
+```python
+new_score = 0.7 * old_score + 0.3 * feedback_score
+```
+
+**Lý do dùng EMA:**
+- Cân bằng giữa historical data (70%) và feedback mới (30%)
+- Tránh score nhảy vọt do outliers
+- Documents có thể "recover" từ dislike
+
+### Scoring System
+
+**Feedback Scores:**
+- Like: +1.0
+- Dislike: -0.5
+
+**Search Re-ranking:**
+```python
+final_score = vector_similarity + (0.2 * feedback_score)
+```
+
+Feedback boost có impact ±20% trên ranking.
+
+**Ví dụ:**
+```
+Document A: similarity=0.85, feedback=+0.75 → final=0.85+0.15=1.00 ⭐
+Document B: similarity=0.90, feedback=-0.30 → final=0.90-0.06=0.84
+
+→ Document A ranks higher despite lower similarity!
+```
+
+## 🚀 Deployment (Render)
+
+### 1. Create Web Service
+
+1. Vào [render.com](https://render.com) → New Web Service
+2. Connect GitHub repository
+3. Settings:
+   - **Root Directory**: `py-chatbot`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+### 2. Environment Variables
+
+Add these in Render dashboard:
+
+```
+GOOGLE_API_KEY=your_gemini_api_key
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/qlmc?retryWrites=true&w=majority
+MONGODB_DB_NAME=qlmc
+NEXTJS_API_URL=https://your-app.vercel.app
+```
+
+### 3. Deploy
+
+Push to GitHub → Render auto-deploys.
+
+**⚠️ Note:** Render free tier có:
+- 15 min idle sleep
+- Ephemeral filesystem (mất data khi restart)
+- 30-60s wake-up time
+
+**Solution:** FAISS index load từ MongoDB (Priority 0) → Fast startup (~10-30s)
+
+## 🛠️ Development Guide
+
+### Add New Documents
+
+```python
+import requests
+
+response = requests.post("http://127.0.0.1:8001/embed", json={
+    "docId": "doc_new_001",
+    "chunks": [
+        "Máy chiếu Epson EB-X05 có độ sáng 3300 lumens.",
+        "Hỗ trợ độ phân giải XGA (1024x768)."
+    ],
+    "title": "Máy chiếu Epson EB-X05",
+    "rolesAllowed": ["teacher", "admin", "technician"]
+})
+print(response.json())
+# {"added": 2, "total_index": 247}
+```
+
+### Update Feedback Scores
+
+```python
+# User clicked "Like" on doc_001
+requests.post("http://127.0.0.1:8001/feedback/update", json={
+    "docId": "doc_001",
+    "feedbackScore": 1.0
+})
+
+# User clicked "Dislike" on doc_002
+requests.post("http://127.0.0.1:8001/feedback/update", json={
+    "docId": "doc_002",
+    "feedbackScore": -0.5
+})
+```
+
+### Save to MongoDB
+
+```python
+# Manually save current index to MongoDB
+requests.post("http://127.0.0.1:8001/index/save-to-mongodb")
+```
+
+### Retrain Index
+
+```python
+# Retrain from knowledge base (data/knowledge.vi.json)
+requests.post("http://127.0.0.1:8001/index/retrain")
+```
+
+## 🐛 Troubleshooting
+
+### FAISS Index Not Found
+
+```bash
+# Train manually
+cd py-chatbot
+.venv\Scripts\Activate.ps1  # Windows
+python -c "from app.main import bootstrap_index; bootstrap_index()"
+```
+
+### MongoDB Connection Error
+
+```bash
+# Check connection string format
+# Ensure IP whitelist: 0.0.0.0/0
+# Encode special characters in password
+# Example: password@123 → password%40123
+```
+
+### Gemini API Rate Limit
+
+```bash
+# Free tier limits: 60 requests/minute
+# Upgrade to paid plan or reduce request frequency
+# Get API key at: https://ai.google.dev/
+```
+
+### Slow Startup on Render
+
+```bash
+# Free tier wake-up: 30-60s (normal)
+# FAISS loading from MongoDB: 10-30s (normal)
+# Total cold start: ~60-90s
+
+# Solution: Keep backend warm với cron ping
+# Or upgrade to paid tier (always-on)
+```
+
+### Unicode Encoding Errors (Windows)
+
+```bash
+# Set environment variable
+$env:PYTHONIOENCODING="utf-8"
+
+# Or add to .env
+PYTHONIOENCODING=utf-8
+```
 
 ## 📊 Performance
 
-- **Embedding**: ~100ms/query
-- **Search**: ~10ms with 1000 documents
-- **RAG Answer**: ~300ms (embedding + search + QA)
-- **Memory**: ~500MB with models loaded
+### Benchmarks (Local)
 
-## 🔐 Security
+- **Search latency**: ~50-100ms (FAISS)
+- **RAG latency**: ~1-3s (includes Gemini)
+- **Index size**: ~1MB (245 vectors, 384-dim)
+- **Startup time**: ~5-10s (local), ~30-60s (Render free tier)
 
-⚠️ **Production Recommendations**:
-- Add API key authentication
-- Rate limiting
-- Input validation
-- HTTPS only
+### Optimization Tips
+
+1. **Reduce top_k**: Fewer results = faster
+2. **Cache embeddings**: Avoid re-encoding same queries
+3. **Batch updates**: Update feedback scores in batches
+4. **Use CDN**: Cache static responses
 
 ## 📝 License
 
-Private project - All rights reserved
+MIT License
 
 ## 🤝 Contributing
 
-This is a private project. Contact project owner for contribution guidelines.
+Contributions welcome! Please:
+1. Fork repository
+2. Create feature branch
+3. Submit pull request
 
 ## 📧 Support
 
-For issues and questions, contact: admin@qlmc.com
+- **Issues**: [GitHub Issues](https://github.com/tpd0905/qlmc/issues)
+- **Docs**: [Main README](../README.md)
 
 ---
 
-Made with ❤️ for QLMC Project
- - Automatic periodic save is enabled via `AUTOSAVE_SECONDS` (default 300 seconds). Set `AUTOSAVE_SECONDS=0` to disable.
-
-Endpoints:
-
-The service also attempts to auto-load the index on startup.
-
-Quick test (PowerShell):
-```powershell
-# After adding some chunks via /embed
-curl -Method POST http://127.0.0.1:8001/index/save
-
-# Restart the service, then
-curl -Method POST http://127.0.0.1:8001/index/load
-curl http://127.0.0.1:8001/index/stats
-```
-
-## 🗄️ Persistent Pre-Trained Index
-Render (free tier) puts services to sleep; on restart the Python process must reload embeddings. To avoid re-training manually each time, you can COMMIT a prebuilt FAISS index.
-
-### Option A: Commit Prebuilt Files
-1. Activate venv & install deps.
-2. Run the offline build script:
-  ```powershell
-  python py-chatbot/build_static_index.py
-  ```
-3. This creates `py-chatbot/prebuilt/faiss.index` and `py-chatbot/prebuilt/meta.json`.
-4. Commit those two files:
-  ```powershell
-  git add py-chatbot/prebuilt/faiss.index py-chatbot/prebuilt/meta.json
-  git commit -m "chore(ai): add prebuilt faiss index"
-  git push
-  ```
-5. On startup the service copies them into `store/` automatically.
-
-### Option B: Auto Bootstrap From Knowledge
-Set `BOOTSTRAP_KNOWLEDGE=1` (and ensure `knowledge.vi.json` exists). On cold start if index empty it will embed all documents.
-
-### Updating Knowledge
-After editing `data/knowledge.vi.json` re-run build:
-```powershell
-python py-chatbot/build_static_index.py
-git add py-chatbot/prebuilt/*
-git commit -m "feat(ai): refresh prebuilt index"
-git push
-```
-
-### Verifying
-```powershell
-curl http://127.0.0.1:8001/index/stats
-```
-Fields:
-- `index_size` > 0 and `files.index_exists=true` means load success.
-
-### Notes
-- Do NOT commit virtualenv or large HF model weights; only the small `faiss.index` + `meta.json`.
-- If embedding model changes, rebuild index (dimension must match or it will auto-rebuild).
-
-## Extractive QA (Vietnamese-friendly)
-- The service uses a multilingual QA model by default: `deepset/xlm-roberta-base-squad2`.
-- Configure via environment variable `QA_MODEL_NAME`.
-- Control how many retrieved passages are sent to QA with `QA_TOP_CONTEXTS` (default 3).
-
-Example environment variables (PowerShell):
-```powershell
-
-## Troubleshooting
-- 'py' not found: Use `python` instead of `py` on Windows.
-- Python 3.13 wheels for PyTorch may not be available yet. If install fails:
-	- Option A (recommended): Use Conda
-```
-		```powershell
-		conda create -n qlmc-chatbot python=3.10 -y; conda activate qlmc-chatbot
-		pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-		pip install -r requirements.txt
-		```
-	- Option B: Install Python 3.10/3.11 from python.org and recreate venv using that version.
-		```powershell
-		"C:\\Path\\To\\Python310\\python.exe" -m venv .venv; .\.venv\Scripts\Activate.ps1
-		python -m pip install --upgrade pip
-		pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-		pip install -r requirements.txt
-		```
+**Made with ❤️ by QLMC Team**

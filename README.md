@@ -6,7 +6,8 @@
 ![React](https://img.shields.io/badge/React-19.1.0-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Prisma](https://img.shields.io/badge/Prisma-5.22.0-2D3748?style=for-the-badge&logo=prisma)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python)
 ![Ant Design](https://img.shields.io/badge/Ant_Design-5.27.5-0170FE?style=for-the-badge&logo=ant-design)
 
 **Hệ thống quản lý máy chiếu thông minh với AI Assistant**
@@ -59,15 +60,20 @@
 - ✅ Phê duyệt/từ chối lịch đặt
 - ✅ Xem thống kê sử dụng thiết bị (biểu đồ, báo cáo)
 - ✅ Quản lý yêu cầu hỗ trợ và phân công kỹ thuật viên
-- ✅ Xem lịch sử AI tự học (AI Learning Logs)
-- ✅ Thống kê feedback chatbot (Like/Dislike analytics)
+- ✅ **AI Learning History**: Xem logs học tập hàng ngày với top questions
+- ✅ **AI Feedback Analytics**: Thống kê Like/Dislike ratio, trends
+- ✅ Train AI với knowledge base mới
+- ✅ Liên kết tài khoản Google OAuth (email recovery)
 
 #### **Teacher (Giáo viên)**
 - ✅ Đặt mượn máy chiếu theo thời gian
 - ✅ Xem lịch đặt của mình và lịch chung
-- ✅ Đánh giá thiết bị sau khi sử dụng (1-5 sao)
-- ✅ Gửi yêu cầu hỗ trợ kỹ thuật
-- ✅ Sử dụng AI Assistant để tra cứu thông tin
+- ✅ Đánh giá thiết bị sau khi sử dụng (1-5 sao + nhận xét)
+- ✅ Gửi yêu cầu hỗ trợ kỹ thuật với priority levels
+- ✅ Sử dụng AI Assistant 24/7 (hỏi đáp, hướng dẫn)
+- ✅ Feedback AI responses (Like/Dislike) để cải thiện chất lượng
+- ✅ Quên mật khẩu: Reset qua email với OTP verification
+- ✅ Liên kết tài khoản Google OAuth (email recovery)
 
 #### **Technician (Kỹ thuật viên)**
 - ✅ Xem yêu cầu hỗ trợ được phân công
@@ -75,15 +81,19 @@
 - ✅ Quản lý và cập nhật trạng thái thiết bị
 - ✅ Xem lịch bảo trì theo calendar
 - ✅ Xem lịch sử công việc đã hoàn thành
+- ✅ Liên kết tài khoản Google OAuth (email recovery)
 
-### AI Assistant & ChatWidget
+### AI Assistant & Tự Học
 
-- **ChatWidget tích hợp** trên mọi trang
+- **ChatWidget tích hợp** trên mọi trang với UI hiện đại
 - **RAG (Retrieval Augmented Generation)** với FAISS vector search
-- **Feedback system** (Like/Dislike) để cải thiện câu trả lời
-- **AI tự học hàng ngày** (00:00) từ feedback người dùng
-- **Knowledge base** tự động cập nhật dựa trên điểm số feedback
-- Hiển thị **nguồn tài liệu** (sources) kèm câu trả lời
+- **Feedback system** (Like/Dislike) để đánh giá câu trả lời
+- **Real-time learning**: Feedback ngay lập tức cập nhật điểm số
+- **Daily batch learning** (00:00 hàng ngày): Phân tích toàn diện
+- **Exponential Moving Average**: Cân bằng historical data (70%) và feedback mới (30%)
+- **MongoDB Persistence**: FAISS index được lưu trữ lâu dài, không mất khi restart
+- **Search re-ranking**: Documents có feedback tốt xuất hiện trên đầu
+- **Admin Analytics**: Dashboard xem learning logs và top questions
 
 ### Thống kê & Báo cáo
 
@@ -107,24 +117,27 @@
 
 ### Backend
 - **Next.js API Routes** - RESTful API
-- **Prisma 5.22.0** - ORM
-- **MySQL 8.0** - Database
+- **Prisma 5.22.0** - ORM với MongoDB
+- **MongoDB Atlas** - Cloud NoSQL Database
 - **JWT (jsonwebtoken 9.0.2)** - Authentication
 - **Bcrypt.js 2.4.3** - Password hashing
-- **Zod 3.23.8** - Schema validation
+- **Nodemailer 6.9.13** - Email verification
+- **Google OAuth 2.0** - Social login
 
 ### AI Backend (Python)
 - **FastAPI** - Python web framework
-- **LangChain** - LLM orchestration
-- **FAISS** - Vector search
-- **Sentence Transformers** - Embedding models
+- **FAISS** - Vector search engine
+- **Sentence Transformers** - Embedding models (384-dim)
 - **Google Generative AI** - LLM (Gemini)
+- **PyMongo 4.6.0** - MongoDB driver cho persistence
+- **Torch** - Deep learning framework
 
-### DevOps & Tools
-- **Concurrently** - Run multiple processes
-- **ESLint** - Code linting
-- **Vercel** - Deployment platform (optional)
-- **XAMPP** - Local MySQL server
+### DevOps & Deployment
+- **Vercel** - Frontend hosting với Cron Jobs
+- **Render** - Python backend hosting
+- **MongoDB Atlas** - Cloud database
+- **Vercel Cron** - Daily AI learning scheduler
+- **Node-cron** - Local cron scheduler
 
 ---
 
@@ -133,8 +146,9 @@
 ### Bắt buộc
 - **Node.js** >= 18.0.0
 - **npm** hoặc **yarn**
-- **MySQL** >= 8.0 (XAMPP hoặc standalone)
+- **MongoDB Atlas Account** (miễn phí tại mongodb.com/cloud/atlas)
 - **Python** >= 3.9 (cho AI backend)
+- **Google API Key** (miễn phí tại ai.google.dev)
 
 ### Khuyến nghị
 - **RAM**: >= 8GB
@@ -160,53 +174,75 @@ npm install
 
 ### 3. Cấu hình Database
 
-#### a. Khởi động MySQL (XAMPP)
-- Mở XAMPP Control Panel
-- Start **Apache** và **MySQL**
+#### a. Tạo MongoDB Atlas Cluster (Miễn phí)
 
-#### b. Tạo Database
+1. Đăng ký tại https://www.mongodb.com/cloud/atlas
+2. Tạo Cluster miễn phí (M0 Sandbox)
+3. Whitelist IP: `0.0.0.0/0` (cho phép tất cả)
+4. Tạo Database User với username/password
+5. Copy Connection String
 
-```sql
-CREATE DATABASE qlmc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+#### b. Cấu hình `.env`
 
-#### c. Cấu hình `.env`
-
-```bash
-cp .env.example .env
-```
-
-Chỉnh sửa `.env`:
+Tạo file `.env` trong thư mục gốc:
 
 ```env
-# MySQL Connection
-DATABASE_URL="mysql://root:@localhost:3306/qlmc"
+# MongoDB Atlas Connection
+DATABASE_URL="mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/qlmc?retryWrites=true&w=majority"
 
-# JWT Secret (đổi thành chuỗi ngẫu nhiên)
-JWT_SECRET="your-super-secret-jwt-key-change-me"
+# JWT Secret (đổi thành chuỗi ngẫu nhiên mạnh)
+JWT_SECRET="your-super-secret-jwt-key-change-me-in-production"
 
-# Cron Secret (để bảo vệ daily AI learning endpoint)
-CRON_SECRET="your-cron-secret-key"
+# Cron Secret (bảo vệ daily AI learning endpoint)
+CRON_SECRET="your-cron-secret-key-change-me"
+
+# Email Configuration (Gmail SMTP)
+EMAIL_USER="your-email@gmail.com"
+EMAIL_PASS="your-gmail-app-password"
+EMAIL_FROM="QLMC System <your-email@gmail.com>"
+
+# Google OAuth 2.0 (Optional - cho social login)
+GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # Python Backend URL
 NEXT_PUBLIC_PYTHON_BACKEND_URL="http://127.0.0.1:8001"
+PY_CHATBOT_URL="http://127.0.0.1:8001"
 
 # App URL
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-### 4. Chạy Prisma Migrations
+#### c. Cấu hình Python Backend `.env`
+
+Tạo file `py-chatbot/.env`:
+
+```env
+# Google Gemini API Key (miễn phí tại ai.google.dev)
+GOOGLE_API_KEY="your-gemini-api-key-here"
+
+# MongoDB Connection (dùng chung với Next.js)
+MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/qlmc?retryWrites=true&w=majority"
+MONGODB_DB_NAME="qlmc"
+
+# Next.js API URL (để lấy/lưu FAISS index)
+NEXTJS_API_URL="http://localhost:3000"
+```
+
+### 4. Setup Database Schema
 
 ```bash
 # Generate Prisma Client
-npm run prisma:generate
+npx prisma generate
 
-# Run migrations
-npm run prisma:migrate
+# Push schema to MongoDB (không cần migrations với MongoDB)
+npx prisma db push
 
-# (Optional) Seed database với dữ liệu mẫu
+# Seed database với dữ liệu mẫu
 npm run seed
 ```
+
+**Lưu ý:** MongoDB không dùng migrations như SQL. Prisma sẽ tự động sync schema.
 
 ### 5. Cài đặt Python AI Backend
 
@@ -226,15 +262,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### Cấu hình Gemini API Key
+#### Train AI với Knowledge Base
 
-Tạo file `py-chatbot/.env`:
+```bash
+cd py-chatbot
+.venv\Scripts\activate  # Windows
+# hoặc: source .venv/bin/activate  # macOS/Linux
 
-```env
-GOOGLE_API_KEY=your_gemini_api_key_here
+# Train AI lần đầu (tạo FAISS index)
+python -c "import app.main; print('Training complete!')"
 ```
 
-> Lấy API key miễn phí tại: https://makersuite.google.com/app/apikey
+> FAISS index sẽ được lưu vào MongoDB tự động
 
 ### 6. Khởi động Development Server
 
@@ -342,13 +381,23 @@ qlmc/
 - scheduledStartTime, scheduledEndTime
 
 #### **ChatbotFeedback**
-- userId, question, answer, feedback (like/dislike)
-- sources (JSON), createdAt
+- userId, question, answer
+- feedback: "like" | "dislike"
+- sources: JSON array of document IDs
+- createdAt
 
 #### **AILearningLog**
 - totalFeedback, likeCount, dislikeCount
-- documentsUpdated, topQuestions, improvements
+- documentsUpdated: số documents đã update scores
+- topQuestions: JSON array [{question, count, avgScore}]
+- improvements: JSON array of improvement notes
 - learningDate
+
+#### **FAISSIndex** (MongoDB Persistence)
+- indexData: Base64-encoded FAISS binary
+- metadata: JSON {docCount, dimension, createdBy}
+- isActive: boolean
+- createdAt, updatedAt
 
 ---
 
@@ -368,14 +417,22 @@ qlmc/
 - `GET /api/admin/statistics` - Statistics
 - `POST /api/admin/support/assign` - Assign technician
 
-### Chatbot APIs
-- `POST /api/chat` - Send message
-- `POST /api/chatbot-feedback` - Submit feedback
-- `GET /api/chatbot-feedback` - Get feedback (Admin)
-- `POST /api/chatbot-learn` - Trigger AI learning (Cron)
+### Chatbot & AI Learning APIs
+- `POST /api/chat` - Send message to AI
+- `POST /api/chatbot-feedback` - Submit like/dislike feedback
+- `GET /api/chatbot-feedback` - Get all feedback (Admin only)
+- `GET /api/admin/ai-learning-history` - Get learning logs
+- `POST /api/admin/train` - Train AI với knowledge base mới
+- `GET /api/faiss-index` - Get FAISS index từ MongoDB
+- `POST /api/faiss-index` - Save FAISS index to MongoDB
 
 ### Cron Jobs
-- `POST /api/cron/daily-ai-learning` - Daily AI learning
+- `POST /api/cron/daily-ai-learning` - Daily AI learning (00:00)
+  - Phân tích feedback 24h qua
+  - Tính điểm documents (like=+1.0, dislike=-0.5)
+  - Update Python backend với scores
+  - Track top 10 questions
+  - Save learning log to MongoDB
 
 ---
 
@@ -434,49 +491,257 @@ UserID: QNU2127652
 ## Scripts
 
 ```bash
-npm run dev                # Start dev server
+# Development
+npm run dev                # Start Next.js + Python backend (concurrently)
+npm run dev:next          # Start Next.js only
+npm run dev:ai            # Start Python backend only
+
+# Database
+npx prisma generate       # Generate Prisma Client
+npx prisma db push        # Push schema to MongoDB
+npx prisma studio         # Open Prisma Studio GUI
+npm run seed              # Seed database với dữ liệu mẫu
+
+# AI & Learning
+npm run ai-learning       # Trigger daily AI learning manually
+node scripts/daily-ai-learning.js  # Run cron scheduler locally
+
+# Build & Production
 npm run build             # Build for production
-npm run prisma:generate   # Generate Prisma Client
-npm run prisma:migrate    # Run migrations
-npm run prisma:studio     # Open Prisma Studio
-npm run seed              # Seed database
-npm run ai-learning       # Trigger AI learning manually
+npm start                 # Start production server
 ```
 
 ---
 
 ## Deployment
 
-### Vercel (Recommended)
+### Production Setup
 
-1. Push to GitHub
-2. Import to Vercel
-3. Add environment variables
-4. Setup external MySQL database
-5. Deploy Python backend separately
-6. Setup cron job for daily AI learning
-
-### Manual VPS
-
+#### 1. Frontend (Vercel)
 ```bash
-git clone repo
-npm install && cd py-chatbot && pip install -r requirements.txt
-npm run build
-pm2 start npm --name "qlmc-web" -- start
-pm2 start "python -m uvicorn app.main:app --port 8001" --name "qlmc-ai"
+# Push to GitHub
+git push origin main
+
+# Import to Vercel
+# 1. Vào vercel.com → Import Project
+# 2. Connect GitHub repository
+# 3. Add Environment Variables:
+#    - DATABASE_URL (MongoDB Atlas)
+#    - JWT_SECRET
+#    - CRON_SECRET
+#    - EMAIL_USER, EMAIL_PASS
+#    - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (optional)
+#    - NEXT_PUBLIC_PYTHON_BACKEND_URL (Render URL)
+#    - NEXT_PUBLIC_APP_URL (Vercel URL)
+
+# 4. Deploy
+# Vercel Cron sẽ tự động chạy daily-ai-learning (00:00)
 ```
+
+#### 2. Python Backend (Render)
+```bash
+# 1. Tạo account tại render.com
+# 2. New Web Service → Connect GitHub repo
+# 3. Settings:
+#    - Root Directory: py-chatbot
+#    - Build Command: pip install -r requirements.txt
+#    - Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# 4. Environment Variables:
+#    - GOOGLE_API_KEY
+#    - MONGODB_URI
+#    - MONGODB_DB_NAME=qlmc
+#    - NEXTJS_API_URL (Vercel URL)
+# 5. Deploy
+```
+
+#### 3. Database (MongoDB Atlas)
+- Whitelist Vercel IPs: `0.0.0.0/0`
+- Whitelist Render IPs: `0.0.0.0/0`
+- Connection string cho cả Next.js và Python
+
+#### 4. Verify Deployment
+```bash
+# Test frontend
+curl https://your-app.vercel.app/api/health
+
+# Test Python backend
+curl https://your-backend.onrender.com/health
+
+# Test daily learning
+curl -X POST https://your-app.vercel.app/api/cron/daily-ai-learning \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+### Environment Variables Summary
+
+**Next.js (.env):**
+```env
+DATABASE_URL="mongodb+srv://..."
+JWT_SECRET="..."
+CRON_SECRET="..."
+EMAIL_USER="..."
+EMAIL_PASS="..."
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+NEXT_PUBLIC_PYTHON_BACKEND_URL="https://your-backend.onrender.com"
+NEXT_PUBLIC_APP_URL="https://your-app.vercel.app"
+```
+
+**Python (py-chatbot/.env):**
+```env
+GOOGLE_API_KEY="..."
+MONGODB_URI="mongodb+srv://..."
+MONGODB_DB_NAME="qlmc"
+NEXTJS_API_URL="https://your-app.vercel.app"
+```
+
+---
+
+## Kiến Trúc Hệ Thống
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         USER                                 │
+│            (Browser: Chrome, Edge, Safari)                   │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    NEXT.JS FRONTEND                          │
+│                  (Vercel Deployment)                         │
+│  - React 19 + TypeScript                                    │
+│  - Ant Design UI Components                                 │
+│  - ChatWidget (Real-time feedback)                          │
+│  - JWT Authentication                                       │
+└───────┬──────────────────────┬──────────────────────────────┘
+        │                      │
+        ↓                      ↓
+┌──────────────────┐   ┌──────────────────────────┐
+│  NEXT.JS API     │   │   PYTHON AI BACKEND       │
+│  (Serverless)    │   │   (Render Deployment)     │
+│                  │   │                           │
+│ • Auth APIs      │   │ • FastAPI                 │
+│ • CRUD APIs      │   │ • FAISS Vector Search     │
+│ • Cron Jobs      │   │ • Sentence Transformers   │
+│ • Email (SMTP)   │   │ • Google Gemini LLM       │
+│ • Google OAuth   │   │ • PyMongo                 │
+└───────┬──────────┘   └───────┬───────────────────┘
+        │                      │
+        ↓                      ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   MONGODB ATLAS                              │
+│              (Cloud NoSQL Database)                          │
+│                                                              │
+│ Collections:                                                 │
+│ • User, Projector, Booking, Review                          │
+│ • SupportRequest, Activity                                  │
+│ • ChatbotFeedback, AILearningLog                           │
+│ • FAISSIndex (Binary storage)                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow: AI Self-Learning
+
+```
+1. User Chat → ChatWidget
+2. ChatWidget → POST /api/chat → Python Backend
+3. Python FAISS Search → Return answer + sources
+4. User clicks 👍/👎 → POST /api/chatbot-feedback
+5. Real-time: Update Python document scores (immediate)
+6. Daily 00:00: Vercel Cron → POST /api/cron/daily-ai-learning
+7. Analyze 24h feedback → Calculate avg scores
+8. Batch update Python backend → EMA algorithm (0.7 old + 0.3 new)
+9. Save to AILearningLog → Admin can view analytics
+10. Next search: Documents with high scores rank higher
+```
+
+---
+
+## Troubleshooting
+
+### MongoDB Connection Error
+```bash
+# Kiểm tra connection string
+# Đảm bảo whitelist IP: 0.0.0.0/0
+# Kiểm tra username/password encode đúng (dùng encodeURIComponent)
+```
+
+### Python Backend Not Starting
+```bash
+# Kiểm tra virtual environment
+cd py-chatbot
+.venv\Scripts\activate  # Windows
+
+# Cài lại dependencies
+pip install -r requirements.txt
+
+# Kiểm tra GOOGLE_API_KEY trong .env
+```
+
+### FAISS Index Not Loading
+```bash
+# Train lại từ đầu
+cd py-chatbot
+python -c "import app.main; print('OK')"
+
+# Kiểm tra MongoDB có collection FAISSIndex không
+# Hoặc xóa và train lại
+```
+
+### Daily Learning Không Chạy
+```bash
+# Kiểm tra Vercel Cron config trong vercel.json
+# Hoặc chạy thủ công:
+curl -X POST http://localhost:3000/api/cron/daily-ai-learning \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/AmazingFeature`
+3. Commit changes: `git commit -m 'Add AmazingFeature'`
+4. Push to branch: `git push origin feature/AmazingFeature`
+5. Open a Pull Request
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+## Contact
+
+Project maintained by: **QLMC Team**
+
+- **GitHub**: [tpd0905/qlmc](https://github.com/tpd0905/qlmc)
+- **Issues**: [GitHub Issues](https://github.com/tpd0905/qlmc/issues)
 
 ---
 
 ## Acknowledgments
 
-- [Next.js](https://nextjs.org/) - The React Framework
-- [Ant Design](https://ant.design/) - Enterprise UI Design
+- [Next.js](https://nextjs.org/) - The React Framework for Production
+- [Ant Design](https://ant.design/) - Enterprise-class UI Design
 - [Prisma](https://www.prisma.io/) - Next-generation ORM
-- [LangChain](https://www.langchain.com/) - LLM Framework
-- [Google Gemini](https://deepmind.google/technologies/gemini/) - AI Model
+- [MongoDB Atlas](https://www.mongodb.com/atlas) - Cloud Database
+- [FAISS](https://github.com/facebookresearch/faiss) - Vector Search Engine
+- [Google Gemini](https://ai.google.dev/) - Advanced AI Model
+- [Vercel](https://vercel.com/) - Deployment Platform
+- [Render](https://render.com/) - Python Backend Hosting
 
 ---
 
+<div align="center">
+
+**Made with ❤️ by QLMC Team**
+
+⭐ Star this repo if you find it helpful!
 
 </div>
